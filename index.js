@@ -113,8 +113,40 @@ const data = {
   },
 };
 
-const mainIndexPageHandler = (req, res) => {
 
+/**
+ * The data source handler root requests.
+ * @param {import('express').Request} req The request of the root resource.
+ * @param {import('express').Response} res The response of the request.
+ */
+const mainIndexPageHandler = (req, res, next) => {
+  const mesgContent = ["Dune Campaing Aid Data Service", 
+  "This is data service for Dune Campaing Aid."];
+  // TODO: Add content encoding - at the moment only support UTF-8.
+  if (req.accepts("html")) {
+  res.send(mesgContent.map( (content, index) => (
+    index ? `<p>${content}</p>` : `<h1>${content}</h1>`
+  )));
+  } else if (req.accepts("xml")) {
+    // The XML repsonse.
+    res.send(`<document>${
+      mesgContent.map( (content, index) => (
+        index ? `<paragraph>${content}</paragraph>` : `<title>${content}</title>`
+      )).join("\n")
+    }</document>`)
+  } else if (req.accepts("json")) {
+    // The JSON response.
+    res.json(mesgContent.reduce( (result, content, index) => {
+      if (index) {
+        result.content.push(content)
+      } else {
+        result.title = content;
+      }
+      return result;
+    }, {title: undefined, content: []}))
+  } else if (req.accepts("text/plain")) {
+    res.send(mesgContent.join("\n"))
+  }
 };
 
 /**
@@ -132,11 +164,16 @@ const menuResourceHandler = (req, res) => {
  * @param {import('express').Response} res The response of the request.
  */
 const dataResourceHandler = (req, res) => {
-  res.json({message: "Menu not yet supported", result: Error("Unsupported")});
+  res.json({message: "Data not yet supported", result: Error("Unsupported")});
 };
 
+// Registering paths.
 app.get("/", mainIndexPageHandler);
 app.get("/data/", dataResourceHandler);
 app.get("/menu/", menuResourceHandler);
+
+app.listen(PORT, () => {
+  logger.log(`Dune Rest server running on ${PORT}`);
+});
 
 logger.log("Dune Rest Service!");
