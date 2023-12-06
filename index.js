@@ -139,12 +139,14 @@ const wordRe = /\p{Lu}\p{Ll}*/gu;
  * @returns {boolean} True, if and only if the name is a valid skill name.
  */
 export const validSkillName = (name) => {
+  const re = RegExp(
+    "^" + "(?<name>" + wordRe.source + "(?:[\\s\\-]" + wordRe.source + ")*" + ")" + "$",
+    "gu"
+  );
+  console.debug("Regexp:", re);
   return (
     validName(name) &&
-    RegExp(
-      "^" + "(?<name>" + wordRe + "(?:[\\s\\-]" + wordRe + ")*" + ")" + "$",
-      "ug"
-    ).test(name)
+    re.test(name)
   );
 };
 
@@ -284,7 +286,7 @@ const templates = {
   },
   traits: {
     fields: {
-      name: { desc: "The name of the drive", type: string },
+      name: { desc: "The name of the drive", type: "string" },
       title: {
         desc: "The title of the drive",
         type: "string",
