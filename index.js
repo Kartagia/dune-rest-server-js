@@ -142,9 +142,9 @@ export const validSkillName = (name) => {
   return (
     validName(name) &&
     RegExp(
-      "^" + "(?<name>" + wordRe + "(?:[\\s\\-]" + wordRe + ")*" + ")" + "$",
-      "ug"
-    ).test(name)
+      "^" + "(?<name>" + wordRe.source + "(?:[\\s\\-]" + wordRe.source + ")*" + ")" + "$",
+      "gu"
+      ).test(name)
   );
 };
 
