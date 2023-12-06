@@ -11,6 +11,18 @@ const logger = console;
  */
 
 /**
+ * Get a value. 
+ * @template TYPE - the value type.
+ * @typedef {import("./modules/tools.promise.mjs").Getter<TYPE>} Getter
+ */
+
+/**
+ * Set a value. 
+ * @template TYPE - The value type.
+ * @typedef {import("./modules/tools.promise.mjs").Setter<TYPE>} Setter
+ */
+
+/**
  * An authorization error.
  */
 export class AuthError extends Error {
@@ -85,15 +97,22 @@ const defaultMenu = () => ({
 const menu = defaultMenu();
 
 /**
+ * The skill template.
+ * @typedef {ResourceTemplate} SkillTemplate
+ * @property {FieldDefinition<string>} name The name of the skill.
+ * @property {FieldDefinition<string>} title The title of the skill.
+ * @property {FieldDefinition<string>} description The description of the skill.
+ */
+
+/**
  * The model of a skill.
  * @typedef {Object} SkillModel
  * @property {string} name The name of the skill.
  * @property {string} [title] The title of the skill. Defaults to the
- * name.
+ * name property value.
  * @property {string} [abbreviation] The abbreviation of the skill.
  * @property {string} [description] The description of the skill.
  */
-
 
 /**
  * Test validity of a name.
@@ -112,8 +131,7 @@ export const validName = (name) => {
  * The regular expression matching to a single word.
  * @type {RegExp}
  */
-const wordRe = /\p{Lu}\p{Ll}*/ug;
-
+const wordRe = /\p{Lu}\p{Ll}*/gu;
 
 /**
  * Test validity of a skill name.
@@ -129,7 +147,6 @@ export const validSkillName = (name) => {
     ).test(name)
   );
 };
-
 
 /**
  * Test validity of an abbreviation. An abbreviation is a valid abbreviation, if it contains
@@ -153,25 +170,30 @@ export const validAbbreviation = (abbreviation) => {
  * @param {string} [description] The description of the skill.
  * @returns {SkillModel}
  */
-export const createSkillModel = (skillName, skillTitle=undefined, abbreviation=undefined, description=undefined) => {
+export const createSkillModel = (
+  skillName,
+  skillTitle = undefined,
+  abbreviation = undefined,
+  description = undefined
+) => {
   if (!validSkillName(skillName)) {
-    throw (typeof skillName === "string"
-    ? new RangeError("Invalid skill name")
-    : new TypeError("Invalid skill name"));
+    throw typeof skillName === "string"
+      ? new RangeError("Invalid skill name")
+      : new TypeError("Invalid skill name");
   }
   if (abbreviation && !validAbbreviation(abbreviation)) {
-    throw (typeof abbreviation === "string"
-    ? new RangeError("Invalid skill abbreviation")
-    : new TypeError("Invalid skill abbreviation"));    
+    throw typeof abbreviation === "string"
+      ? new RangeError("Invalid skill abbreviation")
+      : new TypeError("Invalid skill abbreviation");
   }
-  
+
   return /** @type {SkillModel} */ {
     name: skillName,
     title: skillTitle ? skillTitle : skillName,
-    description, 
-    abbreviation
-  }
-}
+    description,
+    abbreviation,
+  };
+};
 
 /**
  * A function converting a value into a string.
@@ -182,49 +204,87 @@ export const createSkillModel = (skillName, skillTitle=undefined, abbreviation=u
  */
 
 /**
+ * A function converting a string into a value.
+ * @template TARGET
+ * @callback FromStringer
+ * @param {string} source The parsed string.
+ * @returns {TARGET} The parsed value. 
+ * @throws {SyntaxErrror} The parse failed. 
+ */
+
+/**
  * The model value represents a reference to a model value.
  * @template MODEL The type of the contained value.
  * @template VALUE The type of the value.
  * @typedef {Object} ModelValue
- * @property {string[]} ref The reference of the resource. The refernce
+ * @property {string[]|URL} ref The reference of the resource. The reference
  * must refer to a rsource of model type.
  * @property {VALUE} value The value of the resource.
  * @property {Getter<VALUE>|undefined} get The getter of the value.
  * If undefined, the value is write only.
  * @property {Setter<VALUE>|undefined} set The setter of the value.
  * If undefined, the value is read only.
- * @property {ToStringer<MODEL>} toString The converter of the model
- * to string.
+ * @property {Getter<MODEL>} getModel The getter of the model of the value.
+ */
+
+/**
+ * The skill model value.
+ * @typedef {ModelValue<SkillModel, number>} SkillValue
  */
 
 /**
  * A container storing resources
  * @template TYPE The type of the content.
- * @typedef {Object.<string, TYPE|Container<TYPE>>} ResourceContainer<TYPE>
+ * @typedef {Object.<string, TYPE>} ResourceContainer
  */
 
 /**
- * The in memory data.
- * @type {ResourceContainer<any>}
+ * @template TYPE - The value type.
+ * @typedef {Object} FieldDefinition
+ * @property {string} name The name of the field.
+ * @property {string} desc The description of the field.
+ * @property {boolean} [optional=false] Is the field optional.
+ * @property {TYPE|string|undefined} [defaultValue] The default value of the field.
+ * - The string value starting with "=" is considered as property reference.
+ * - An undefined value indicates the default value is undefined. This is the default.
  */
-const data = {
-  skills: /** @type {Conteainer<SkillModel>} */ {
-    template: {
-      name: { desc: "The name of the skill", type: "string" },
-      title: { desc: "The title of the skill", type: "string" },
+
+/**
+ * The definition of a resource.
+ * @template TYPE - The value type of the resource.
+ * @typedef {Object} ResourceDefinition
+ * @property {Object.<string, FieldDefinition<any>>} fields The field definitions.
+ * @property {ToStringer<TYPE>} format The converter of the field to the string.
+ * @property {FromStringer<TYPE>} parse The converter from a string to resource value.  
+ */
+
+/**
+ * The template mapping of the resources.
+ * @type {Object.<string, ResourceDefinition>}
+ */
+const templates = {
+  skills: {
+    fields: {
+      name: {
+        desc: "The name of the skill",
+        type: "string",
+      },
+      title: {
+        desc: "The title of the skill",
+        type: "string",
+        optional: true,
+        defaultValue: "=property(name)",
+      },
       description: {
         desc: "The description of the skill",
         type: "string",
         optional: true,
       },
     },
-    ...["Battle", "Communcation", "Duty", "Move", "Understand"].map(
-      (name, index) => ({ [index]: { name, title: name } })
-    ),
   },
   traits: {
-    template: {
-      name: { desc: "The name of the drive", type: "string" },
+    fields: {
+      name: { desc: "The name of the drive", type: string },
       title: {
         desc: "The title of the drive",
         type: "string",
@@ -239,7 +299,7 @@ const data = {
     },
   },
   drives: {
-    template: {
+    fields: {
       name: { desc: "The name of the drive", type: "string" },
       title: {
         desc: "The title of the drive",
@@ -253,6 +313,21 @@ const data = {
         optional: true,
       },
     },
+  },
+};
+
+/**
+ * The in memory data.
+ * @type {ResourceContainer<any>}
+ */
+const data = {
+  skills: /** @type {ResourceContainer<SkillModel>} */ {
+    ...["Battle", "Communcation", "Duty", "Move", "Understand"].map(
+      (name, index) => ({ [index]: { name, title: name } })
+    ),
+  },
+  traits: {},
+  drives: {
     ...["Duty", "Faith", "Justice", "Power", "Truth"].map((name, index) => ({
       [index]: { name, title: name },
     })),
