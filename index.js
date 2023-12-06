@@ -284,7 +284,7 @@ const templates = {
   },
   traits: {
     fields: {
-      name: { desc: "The name of the drive", type: string },
+      name: { desc: "The name of the drive", type: "string" },
       title: {
         desc: "The title of the drive",
         type: "string",
