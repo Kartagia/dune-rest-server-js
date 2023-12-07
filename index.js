@@ -1,4 +1,8 @@
 import express from "express";
+import {
+  ValidationError,
+  ValidationErrorOptions,
+} from "./modules/tools.promise.mjs";
 const app = express();
 const logger = console;
 
@@ -11,13 +15,13 @@ const logger = console;
  */
 
 /**
- * Get a value. 
+ * Get a value.
  * @template TYPE - the value type.
  * @typedef {import("./modules/tools.promise.mjs").Getter<TYPE>} Getter
  */
 
 /**
- * Set a value. 
+ * Set a value.
  * @template TYPE - The value type.
  * @typedef {import("./modules/tools.promise.mjs").Setter<TYPE>} Setter
  */
@@ -142,9 +146,16 @@ export const validSkillName = (name) => {
   return (
     validName(name) &&
     RegExp(
-      "^" + "(?<name>" + wordRe.source + "(?:[\\s\\-]" + wordRe.source + ")*" + ")" + "$",
+      "^" +
+        "(?<name>" +
+        wordRe.source +
+        "(?:[\\s\\-]" +
+        wordRe.source +
+        ")*" +
+        ")" +
+        "$",
       "gu"
-      ).test(name)
+    ).test(name)
   );
 };
 
@@ -208,8 +219,8 @@ export const createSkillModel = (
  * @template TARGET
  * @callback FromStringer
  * @param {string} source The parsed string.
- * @returns {TARGET} The parsed value. 
- * @throws {SyntaxErrror} The parse failed. 
+ * @returns {TARGET} The parsed value.
+ * @throws {SyntaxErrror} The parse failed.
  */
 
 /**
@@ -255,7 +266,7 @@ export const createSkillModel = (
  * @typedef {Object} ResourceDefinition
  * @property {Object.<string, FieldDefinition<any>>} fields The field definitions.
  * @property {ToStringer<TYPE>} format The converter of the field to the string.
- * @property {FromStringer<TYPE>} parse The converter from a string to resource value.  
+ * @property {FromStringer<TYPE>} parse The converter from a string to resource value.
  */
 
 /**
@@ -335,15 +346,542 @@ const data = {
 };
 
 /**
- *
- * @param {*} data
- * @param {*} resource
+ * @template [ID=string] the identifier type.
+ * @template TYPE the type of the identified value.
+ * The object containing the identifier and value pair.
+ * @typedef {Object} Identified
+ * @property {ID|null} id The identifier value. A null value
+ * indicates there is no identifier.
+ * @property {TYPE} value The identified value.
+ * @method toArray
+ * @returns {Array.[ID, TYPE]} The identified as an array tuple
+ * [key, value].
+ * @method toJSON
+ * @returns {string} The JSON representation of the identified.
  */
-const hasDataResource = (data, resource) => {
-  if (resource instanceof Array) {
+
+/**
+ * Create a string identified value.
+ * @template TYPE The value type.
+ * @param {string|null} id The identifier.
+ * @param {TYPE} value The value
+ * @returns {Identified<TYPE>} The identified.
+ */
+export function createIdentified(id, value) {
+  return {
+    id,
+    value,
+    toArray() {
+      return [id, value];
+    },
+    toJSON() {
+      return JSON.stringify(this.toArray());
+    },
+  };
+}
+
+/**
+ * Get all resources.
+ * @template MODEL - The resource model.
+ * @param {*} data The data structure of the resources.
+ * @param {string} resource The queried resource.
+ * @returns {Promise<Array<Identified<MODEL>>>} The promise of the resource
+ * entries.
+ */
+const getAll = (data, resource) => {
+  if (hasDataResource(data, resource)) {
+    return Promise.resolve(
+      Object.getOwnPropertyNames(data[resource]).map((resName) =>
+        /** @type {Identified<MODEL>} */ createIdentified(
+          resName,
+          /** @type {MODEL} */ data[resource][resName]
+        )
+      )
+    );
   } else {
+    return Promise.reject(new RangeError("No such resource exits"));
   }
 };
+
+/**
+ * Get the data resource.
+ * @template TYPE
+ * @param {Map<string, TYPE>|Object.<string,TYPE>} resources
+ * @param {string} resourceName The name of the resource.
+ * @returns {Promise<TYPE>} The promise of the value.
+ */
+function getDataResource(resources, resourceName) {
+  if (resources instanceof Map) {
+    return Promise.resolve(resources.get(resourceName));
+  } else if (resources instanceof Object) {
+    return Promise.resolve(resources[resourceName]);
+  } else {
+    return Promise.reject(RangeError("Missing resource"));
+  }
+}
+
+/**
+ * Does the data have a resource.
+ * @param {Map<string, any>|Object.<string, any>} resources The resource
+ * collection.
+ * @param {string|string[]} resource The resource name, or the path
+ * to the resource.
+ */
+function hasDataResource(resources, resource) {
+  if (resource instanceof Array) {
+    return resource.reduce(
+      async (result, resourceName, index, path) => {
+        if (result.result) {
+          if (hasDataResource(result.cursor, resourceName)) {
+            result.cursor = await getDataResource(result.cursor, resourceName);
+            if (
+              index !== path.length - 1 &&
+              !(result.cursor instanceof Object)
+            ) {
+              // The value is not a resource container.
+              result.result = false;
+            }
+          } else {
+            // The resource does not exist.
+            result.result = false;
+          }
+        }
+        return result;
+      },
+      { cursor: resources, result: true }
+    ).result;
+  } else if (typeof resource !== "string") {
+    // A non-string resource.
+    return false;
+  } else if (resources instanceof Map) {
+    return resources.has(resource);
+  } else if (resources instanceof Object) {
+    return resource in resources;
+  }
+}
+
+/**
+ * @typedef {string|number|boolean|null|Date} JSONScalars The JSON scalars.
+ */
+
+/**
+ * The JSON Array.
+ * @typedef {{[id:string]: (JSONScalars|JSONArray|JSONObject)} JSONArray
+ */
+
+/**
+ * Test whether an object is a JSON object.
+ * @param {any} value The tested value.
+ * @param {object[]} alreadyHandled The already handled objects to
+ * catch recursion.
+ * @returns {boolean} True, if and only if the object is a JSON object.
+ */
+function isJSONObject(value, alreadyHandled = []) {
+  const newAlreadyHandled = [...alreadyHandled, value];
+  return (
+    value instanceof Object &&
+    ("toJSON" in value ||
+      Object.getOwnPropertyNames(value).every((property) => {
+        const tested = value[property];
+        return (
+          tested === undefined ||
+          tested instanceof Function ||
+          isJSONType(tested, newAlreadyHandled)
+        );
+      }))
+  );
+}
+
+/**
+ * Test, if the value is already handled.
+ * @param {any} value The tested value.
+ * @param {object[]} [alreadyHandled=[]] The already handled objects.
+ * @returns {boolean} True, if and only if the given value is a valid
+ * JSON type.
+ */
+function isJSONType(value, alreadyHandled = []) {
+  if (alreadyHandled.find((entry) => entry === value)) {
+    // Recursive structure with loop is not JSONifiable.
+    return false;
+  }
+  switch (typeof value) {
+    case "number":
+    case "boolean":
+    case "null":
+      return true;
+    case "string":
+      // TODO: Checking for escapes, if necessary
+      return true;
+    case "object":
+      if (value instanceof Date) {
+        return true;
+      } else if (value instanceof Array) {
+        return value.every((entry) =>
+          isJSONType(entry, [...alreadyHandled, value])
+        );
+      } else if ("toJSON" in value) {
+        return true;
+      } else {
+        return isJSONObject(value, [...alreadyHandled]);
+      }
+  }
+}
+
+/**
+ * Creates a JSON array.
+ * @constructor
+ * @param {JSONTypes[]} [values=[]] The values of the array.
+ * @returns {Array<JSONTypes>} The array containing JSON types.
+ * @throws {TypeError} The values array was invalid.
+ */
+function JSONArray(values = []) {
+  if (values && values.every((value) => isJSONType(value))) {
+    return [values];
+  } else {
+    throw new TypeError("All values must be JSON types");
+  }
+}
+
+/**
+ * The JSON Object or dictionary.
+ * @typedef {Object.<string, {JSONScalars|JSONArray|JSONObject}>} JSONObject
+ */
+
+/**
+ * @typedef {(string|number|boolean|null|Date|
+ * Array<JSONTypes>|Object.<string, JSONTypes>)} JSONTypes The JSON types.
+ */
+
+/**
+ * Test whether the give path is a valid resource path value.
+ * @param {string|string[]} path The resource path.
+ * @returns {boolean} True, if and only if the given resource path is a valid
+ * resource path value.
+ */
+function validResourcePath(path) {
+  if (path instanceof Array) {
+    return path.every(
+      (resourceName) =>
+        typeof resourceName === "string" && validResourcePath(resourceName)
+    );
+  } else {
+    return typeof path === "string" && validName(path);
+  }
+}
+
+/**
+ * Is the given resource a valid resource value.
+ * @param {ResourceContainer} data The resource ontainer.
+ * @param {string|string[]} resource A resource or a resource path.
+ * @param {JSONTypes} json A JSON type of the value.
+ * @returns {boolean} True, if and only if the given resource value
+ * is a valid resource value.
+ */
+function validResource(data, resource, json) {
+  if (
+    hasDataResource(data, resource) ||
+    (allowNewResources && validResourcePath(resource))
+  ) {
+    // Checking the content.
+    return isJSONType(json);
+  } else {
+    return false;
+  }
+}
+
+function setDataResource(source, path, value) {
+  return new Promise((resolve, reject) => {
+    try {
+      if (path instanceof Array) {
+        getDataResource(source, path.slice(0, path.length - 1)).then(
+          (parent) => {
+            if (
+              getDataResourceValidator(parent, path[path.length - 1])(value)
+            ) {
+            } else {
+              throw ValidationError(
+                "Invalid resource value",
+                /** @type {ValidationErrorOptions} */ { propertyName: path }
+              );
+            }
+          }
+        );
+      } else if (getDataResourceValidator(source, path)(value)) {
+        source[path] = value;
+        resolve();
+      } else {
+        throw (
+          (ValidationError("Invalid resource value"), { propertyName: path })
+        );
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Get keys of the data source.
+ * @template TYPE - The type of the data source values.
+ * @param {ResourceContainer} dataSource The resource container.
+ * @return {Promise<Array<string>>} The promise of keys.
+ */
+function getKeys(dataSource) {
+  if (dataSource instanceof Map) {
+    return Promise.resolve([...dataSource.keys()]);
+  } else if (dataSource instanceof Object) {
+    return Promise.resolve(Object.getOwnPropertyNames(dataSource));
+  } else {
+    return Promise.reject(new TypeError("Invalid data source"));
+  }
+}
+
+/**
+ * Get data entries.
+ * @template TYPE - The type of the data source values.
+ * @param {ResourceContainer} dataSource The resource container.
+ * @returns {Promise<Array.<string, TYPE>>} The promise of entries.
+ */
+function getEntries(dataSource) {
+  if (dataSource instanceof Map) {
+    return Promise.resolve([...dataSource.entries()]);
+  } else if (dataSource instanceof Object) {
+    return Promise.resolve(
+      Object.getOwnPropertyNames(dataSource).map((property) => [
+        property,
+        dataSource[property],
+      ])
+    );
+  } else {
+    return Promise.reject(new TypeError("Invalid data source"));
+  }
+}
+
+/**
+ * The map of next ids.
+ */
+const nextIds = new Map(
+  getEntries(data).map(([resourceName, resources]) => {
+    return [
+      resourceName,
+      getKeys(resources).reduce(
+        (result, value) =>
+          result === undefined || result < value ? value : result,
+        undefined
+      ),
+    ];
+  })
+);
+
+/**
+ * Increment the string value.
+ * @param {string} source The incremented string.
+ * @param {number} [index] The index of the incrementation. Defaults to
+ * the last index of the source. Any value greater than the last index of the source
+ * is treated like as last index of the source.
+ * @returns {string|undefined} The incremented string, if such value
+ * exists.
+ */
+const stringIncrementer_usAsciiLetter = (source, index = source.length - 1) => {
+  const increment = 1;
+  if (typeof source !== "string" || !Number.isInteger(index) || index < 0) {
+    return undefined;
+  } else if (index >= source.length) {
+    return stringIncrementer_usAsciiLetter(source);
+  }
+  // The index is within the source and is an integer.
+
+  /**
+   * Generate a string containing a letter order.
+   * @param {number} index The letter index.
+   * @param  {...Array.[string|number, string|number]} ranges The ranges of letters.
+   * The numbers are treated as code points.
+   */
+  const letterOrderFunction = function* (index, ...ranges) {
+    let cursor = 0;
+    let end = ranges.length;
+    const getRangeValue = (rangeValue) => {
+      switch (typeof rangeValue) {
+        case "number":
+          return rangeValue;
+        case "string":
+          return rangeValue.codePointAt(0);
+        default:
+          return undefined;
+      }
+    };
+    while (index < end - (cursor ? 0 : 1)) {
+      let letter = getRangeValue(ranges[cursor][0]);
+      while (letter <= getRangeValue(ranges[cursor][1])) {
+        yield String.fromCodePoint(letter++);
+      }
+      index++;
+    }
+  };
+  const validLetterRanges = [
+    ["a", "z"],
+    ["A", "Z"],
+    ["0", "9"],
+  ];
+  const letterOrder = [
+    ...letterOrderFunction(index, ...validLetterRanges),
+  ].join("");
+  const index = letterOrder.findIndex((letter) => letter === source[index]);
+  if (index >= 0) {
+    // The The letter exists in the incrementation order. 
+    // - Incrementing the prefix part, if the incremented letter is the last letter
+    //  of the order. 
+    /* TODO: Add check whether we should decrement the index by 2 if the previous
+    code point is surrogate taking 2 characters.
+    */
+    return index + increment >= letterOrder.length
+      ? stringIncrementer_usAsciiLetter(source.substring(0, index), index)
+          ?.concat(letterOrder[(index+increment)%letterOrder.length])
+          ?.concat(source.substring(index + 1))
+      : substring(0, index)
+          .concat(letterOrder[index + 1])
+          .concat(source.substring(index + 1));
+  } else {
+    // The letter is not within the increment bounds - ignoring it.
+    /* TODO: Add check whether we should decrement the index by 2 if the previous
+    code point is surrogate taking 2 characters.
+    */
+    return index
+      ? stringIncrementer_usAsciiLetter(source, index - 1)
+      : undefined;
+  }
+};
+
+/**
+ * Generate next identifier.
+ * @template {string|number} TYPE The type of the wanted identifier.
+ * @param {TYPE|undefined} [identifier] The current identifier.
+ * @returns {TYPE|undefined} The next identifier. An undefined value
+ * is returned, if there is no next identifier.
+ * @throws {TypeError} The type of the identifier was invalid.
+ * @throws {RangeError} The value of the identifier was invalid.
+ */
+function generateNextId(
+  identifier = undefined,
+  stringIncrementer = stringIncrementer_usAsciiLetter
+) {
+  if (typeof identifier === "undefined") {
+    // Default uses integer identifiers.
+    return 1;
+  } else if (typeof identifier === "number") {
+    if (identifier < 1) {
+      throw RangeError("Invalid identifier");
+    } else {
+      return identifier + 1;
+    }
+  } else if (typeof identifier === "string") {
+    const intValue = Number.parseInt(identifier);
+    if (Number.isInteger(intValue)) {
+      if (intValue < 1) {
+        throw RangeError("Invalid identifier");
+      } else {
+        return intValue + 1;
+      }
+    } else {
+      // Determining the next string.
+      if (identifier.length) {
+        if (identifier.length === maxIdLength) {
+          // Updating the value.
+          let goOn = true;
+          let result = identifier.concat("");
+          let index = identifier.length - 1;
+          while (goOn && index >= 0) {
+            if (
+              (index === 0 && identifier[index] === "Z") ||
+              (index > 0 && identifier[index] === "9")
+            ) {
+              // We do have have carry.
+              result[index] = "a";
+            } else {
+              switch (identifier[index]) {
+                case "z":
+                  result[index] = "A";
+                  break;
+                case "Z":
+                  result[index] = "0";
+                  break;
+                default:
+                  result[index] = identifier[index].charCodeAt() + 1;
+              }
+              goOn = true;
+            }
+          }
+        } else {
+          return identifier + "a";
+        }
+      } else {
+        return "a";
+      }
+    }
+  } else {
+    return undefined;
+  }
+}
+
+/**
+ * Generate new identifier for new resource.
+ * @param {ResourceContainer} source The resource container.
+ * @param {string|string[]} path The path to the resource.
+ * @return {Promise<string>} The promise of the identifier.
+ */
+function generateId(source, path) {
+  if (path instanceof Array) {
+    if (path.length === 1) {
+      return generateId(source, path[0]);
+    } else if (path.length === 0) {
+      return Promise.reject(new RangeError("Missing resource"));
+    } else {
+    }
+  } else if (typeof path === "string") {
+    if (path in nextIds) {
+      const result = nextIds.get(path);
+      nextIds.set(path, generateNextId(result));
+      return Promise.resolve(result);
+    } else {
+      const result = generateNextId();
+      nextIds.set(path, result + 1);
+      return Promise.resolve(result);
+    }
+  } else {
+    return Promise.reject(TypeError("Invalid resource"));
+  }
+}
+
+/**
+ *
+ * @template TYPE the value of th
+ * @param {ResourceContainer<TYPE>} source
+ * @param {string|string[]} path The path of the created resource.
+ * @param {TYPE} value The value of the resource.
+ * @returns {Promise<string>} The promise of the identifier of the created resource.
+ */
+function createDataResource(source, path, value) {
+  return new Promise((resolve, reject) => {
+    try {
+      if (hasDataResource(source, path)) {
+        // The resource is already taken.
+        reject(new RangeError("Resource already exists"));
+      } else if (path instanceof Array) {
+        setDataResource(
+          getDataResource(source, path.slice(0, path.lenght - 1)),
+          path[path.lenght - 1],
+          value
+        );
+        resolve(path[path.length - 1]);
+      } else {
+        source[path] = value;
+        resolve(path);
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
 
 /**
  * The data source handler root requests.
@@ -449,8 +987,18 @@ app.use(express.json());
 app.get("/", mainIndexPageHandler);
 
 // Registering the data error handler.
-app.use("/data/:resource/:id", (error, req, res, next) => {});
-app.use("/data/:resource/", (error, req, res, next) => {});
+app.use("/data/:resource/:id", (error, req, res, next) => {
+  if (res.headersSent) {
+    return next(error);
+  }
+  dataErrorHandler(error, req, res, next);
+});
+app.use("/data/:resource/", (error, req, res, next) => {
+  if (res.headersSent) {
+    return next(error);
+  }
+  dataErrorHandler(error, req, res, next);
+});
 
 // Data error handling.
 app.put("/data/:resource/:id", (req, res, next) => {
@@ -472,7 +1020,7 @@ app.post("/data/:resource", (req, res, next) => {
   // Replace all resources.
   if (req.is("json")) {
     replaceAll(req.params.resource, req.body).then(
-      res.sendStatus(200),
+      () => res.sendStatus(200),
       dataErrorHandler
     );
   } else if (req.is("xml")) {
@@ -488,11 +1036,13 @@ app.post("/data/:resource", (req, res, next) => {
   next();
 });
 // Get all resources.
-app.get("/data/:resource", (req, res) => {
+app.get("/data/:resource", async (req, res) => {
   // get all resources.
-  return getAll(data, req.params.resource).then((entries) => {
-    switch (res.accepts("json")) {
+  return await getAll(data, req.params.resource).then((entries) => {
+    return res.json(entries);
+    switch (req.accepts("json")) {
       case "json":
+        return res.json(entries);
       default:
         return Promise.reject(TypeError("Media type not recognized"));
     }
@@ -500,6 +1050,24 @@ app.get("/data/:resource", (req, res) => {
 });
 app.post("/data/:resource", (req, res) => {
   // replace all resources.
+  const resourceName = req.params.resource;
+  if (validResource(data, resourceName, req.body)) {
+    if (hasDataResource(data, resourceName)) {
+      setDataResource(data, resourceName, req.body).then(
+        () => {
+          res.sendStatus(200);
+        },
+        (error) => dataErrorHandler(error, req, res)
+      );
+    } else {
+      createDataResource(data, resourceName, req.body).then(
+        (created) => res.status(201).json(created),
+        (error) => dataErrorHandler(error, req, res)
+      );
+    }
+  } else {
+    return res.sendStatus(404);
+  }
 });
 app.get("/data/", dataResourceHandler);
 app.get("/menu/", menuResourceHandler);
