@@ -589,6 +589,15 @@ function validResource(data, resource, json) {
   }
 }
 
+/**
+ * Set a resource withing container.
+ * @template TYPE The type o fhte resource value.
+ * @param {ResourceContainer} source The data source.
+ * @param {string|string[]} path The path wihting the source.
+ * @param {TYPE} value The new value of the container.
+ * @returns {Promise<never>} The promise of the completion of the
+ * operation.
+ */
 function setDataResource(source, path, value) {
   return new Promise((resolve, reject) => {
     try {
