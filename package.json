@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js", 
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon index.js",
+    "test": "mocha --harmonize"
   },
   "type": "module",
   "keywords": [
@@ -20,6 +20,9 @@
     "express": "^4.18.2"
   },
   "devDependencies": {
+    "chai": "^5.1.1",
+    "chai-as-promised": "^7.1.2",
+    "mocha": "^10.4.0",
     "nodemon": "^3.0.2"
   }
 }
