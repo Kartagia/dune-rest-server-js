@@ -5,7 +5,7 @@
 const path = require('path');
 
 module.exports = [{
-    entry: {menu: "./src/[name].mjs", people: "./src/[name].mjs"},
+    entry: {menu: "./src/[name].mjs", people: "./src/[name].mjs", dao: "./src/BasicDao.mjs"},
     output: {
         path: path.resolve(__dirname, "lib"),
         filename: '[name].js',
