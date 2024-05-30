@@ -34,40 +34,118 @@ function deepEquals(a, b) {
     }
 }
 
+function testNamed(tested) {
+    expect(tested, "Not an object").instanceOf(Object);
+    expect(tested).property("name");
+    expect(tested.name).string;
+    if ("id" in tested) {
+        expect(["string", "undefined"].some((type) => (typeof tested.id === type)), "Invalid id type").true;
+    }
+}
+
+function testSkillProps(tested) {
+    testNamed(tested);
+    [["current", "number"]].forEach( ([requiredProperty, type]) => {
+        expect(tested, `Missing required property ${requiredProperty}`).property(requiredProperty);
+        expect(tested[requiredProperty]).a(type);
+    });
+    ["minValue", "maxValue"].map( (prop) => ([prop, "number"])).forEach( ([optionalProperty, type]) => {
+        expect(tested, `Missing required property ${optionalProperty}`).property(optionalProperty);
+        if (optionalProperty in tested && tested[optionalProperty] !== undefined) {
+            expect(tested[optionalProperty]).a(type);
+        }
+    });
+}
+
 describe("class People", function () {
 
     describe("Default skills", function () {
-        expect(People.defaultSkills).not.null;
-        expect(People.defaultSkills).instanceOf(Object);
+        it("Exists", function() {
+            expect(People.defaultSkills).not.null;
+        });
+        it("Is object", function() {
+            expect(People.defaultSkills).instanceOf(Object);
+        });
+        it("Members are skill props", function() {
+            Object.getOwnPropertyNames(People.defaultSkills).forEach( (skillName) => {
+                const tested = People.defaultSkills[skillName];
+                expect(tested).instanceOf(Object);
+                testNamed(tested);
+                testSkillProps(tested);
+                expect(tested).property("minValue", 4);
+                expect(tested).property("maxValue", 8);
+                expect(tested).property("current", 4);
+            });
+            expect(People.defaultSkills).instanceOf(Object);
+        });
     });
 
     describe("Construction", function () {
         it("Just name", function () {
             const name = "Sirius";
             const result = new People({ name: name });
-            expect(result).not.null;
-            expect(result).instanceOf(People);
-            expect(result.name).equal(name);
-            expect(result.id).equal(name);
-            expect(result.skills).not.null;
-
-            Object.getOwnPropertyNames(People.defaultSkills).forEach( (skillName) => {
-                expect(result.skills, `Missing skill ${skillName}`).property(skillName);
-                expect(result.skills[skillName]).property('current', 4);
-                expect(result.skills[skillName]).property('minValue', 4);
-                expect(result.skills[skillName]).property('maxValue', 8);
-                expect(result.skills[skillName]).property('valueOf');
-                expect(result.skills[skillName].valueOf()).equal(result.skills[skillName].current);
-
-
-            });
-            expect(result.skills);
+            testPeople(result, name);
+        });
+        it("Name and Id", function () {
+            const name = "Rigel";
+            const id = "Carrowfan.Rigel"
+            const result = new People({ name: name, id: id });
+            testPeople(result, name, id);
         });
     });
 });
 
 describe("constant dummyPeople", function () {
 
-    expect(dummyDao.all()).eventually.property("length", 0);
+    it(`All`, function() {
+        expect(dummyDao.all()).eventually.property("length", 0);
+    })
+
+    describe('Add new person', function() {
+        it("With name only", function() {
+            let id = "Sirius";
+            let name = id;
+            expect(dummyDao.create({name}), `Adding ${id} failed`).eventually.equal(id);
+            expect(dummyDao.all().then( (entries) => (entries.find( ([entryId, entry]) => (entry.name === name && entryId===id)) ?.id) ),
+            "Could not find aadded person from all").eventually.equal(id);
+        });
+        it("Name and Id", function () {
+            const name = "Rigel";
+            const id = "Carrowfan.Rigel"
+            expect(dummyDao.create({name, id}), `Adding ${id} failed`).eventually.equal(id);
+            expect(dummyDao.all().then( (entries) => (entries.find( ([entryId, entry]) => (entry.name === name && entryId===id)) ?.id) ),
+            "Could not find aadded person from all").eventually.equal(id);
+        });
+        it("Duplicate Name with Different Default Id", function () {
+            const name = "Rigel";
+            const id = name;
+            expect(dummyDao.create({name}), `Adding ${id} failed`).eventually.equal(id);
+            expect(dummyDao.all().then( (entries) => (entries.find( ([entryId, entry]) => (entry.name === name && entryId===id)) ?.id) ),
+            "Could not find aadded person from all").eventually.equal(id);
+        });
+        it("Duplicate Name with duplicate Default Id", function () {
+            const name = "Rigel";
+            const id = name;
+            expect(dummyDao.create({name}), `Adding duplicate id ${id} failed to throw`).eventually.rejectedWith(RangeError);
+        });
+    });
 
 });
+
+function testPeople(result, name, id=undefined, type=undefined) {
+    expect(result).not.null;
+    expect(result).instanceOf(People);
+    expect(result.name).equal(name);
+    expect(result.id).equal(id ?? name);
+    expect(result.skills).not.null;
+    expect(result.type).equal(type ?? "Major");
+
+    Object.getOwnPropertyNames(People.defaultSkills).forEach((skillName) => {
+        expect(result.skills, `Missing skill ${skillName}`).property(skillName);
+        expect(result.skills[skillName]).property('current', 4);
+        expect(result.skills[skillName]).property('minValue', 4);
+        expect(result.skills[skillName]).property('maxValue', 8);
+        expect(result.skills[skillName]).property('valueOf');
+        expect(result.skills[skillName].valueOf()).equal(result.skills[skillName].current);
+    });
+}
