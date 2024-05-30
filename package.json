@@ -25,6 +25,9 @@
     "chai": "^5.1.1",
     "chai-as-promised": "^7.1.2",
     "mocha": "^10.4.0",
-   "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "path": "^0.12.7",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.4"
   }
 }
