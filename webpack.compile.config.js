@@ -5,7 +5,31 @@
 const path = require('path');
 
 module.exports = [{
-    entry: {menu: "./src/[name].mjs", people: "./src/[name].mjs", dao: "./src/BasicDao.mjs"},
+    entry: {menu: "./src/menu.mjs"},
+    output: {
+        path: path.resolve(__dirname, "lib"),
+        filename: '[name].js',
+        globalObject: 'this',
+        library:  {
+            name: '[name]',
+            type: 'umd'
+        }
+    }
+},
+{
+    entry: {people: "./src/people.mjs"},
+    output: {
+        path: path.resolve(__dirname, "lib"),
+        filename: '[name].js',
+        globalObject: 'this',
+        library:  {
+            name: '[name]',
+            type: 'umd'
+        }
+    }
+},
+{
+    entry: {dao: "./src/BasicDao.mjs"},
     output: {
         path: path.resolve(__dirname, "lib"),
         filename: '[name].js',
