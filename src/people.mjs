@@ -61,15 +61,24 @@
  * Class representing a person.
  */
 export class People {
+    /**
+     * The character types of the game system.
+     * @type {string[]}
+     */
+    static get characterTypes() {
+        return ["Major", "Minor", "Support"];
+    }
+
 
     /**
      * The default skills of the people.
      * @type {Skills}
      */
     static get defaultSkills() {
-        return ["Battle", "Communicate", "Duty", "Move", "Understand"].map(skill => ({
-            [skill]: { name: skill, id: skill, minValue: 4, maxValue: 4, current: 4, valueOf() { return this.current } }
-        }))
+        return ["Battle", "Communicate", "Duty", "Move", "Understand"].reduce( (result, skill) => {
+            result[skill] = { name: skill, id: skill, minValue: 4, maxValue: 8, current: 4, valueOf() { return this.current } };
+            return result;
+        }, {})
     }
 
     /**
@@ -77,10 +86,20 @@ export class People {
      * @type {Record<string,Skills>} 
      */
     static get typeSpecificSkills() {
-        return this.characterTypes.reduce((result, type) => {
-            result[type] = this.defaultSkills;
+        return People.characterTypes.reduce((result, type) => {
+            result[type] = People.defaultSkills;
             return result;
         }, {});
+    }
+
+    defaultId(props) {
+        if (props && props.name) {
+            return props.name;
+        } else if (props) {
+            throw new SyntaxError("Invalid name");
+        } else {
+            throw new TypeError("Invalid people - not an implementation of PeopleProps");
+        }
     }
 
     /**
@@ -89,18 +108,11 @@ export class People {
      */
     constructor(props) {
         this.name = props.name;
-        this.id = props.id ?? this.defaultId(props.name);
+        this.id = props.id ?? this.defaultId(props);
         this.type = props.type ?? "Major";
         this.skills = props.skills ?? People.typeSpecificSkills[this.type];
     }
 
-    /**
-     * The character types of the game system.
-     * @type {string[]}
-     */
-    get characterTypes() {
-        return ["Major", "Minor", "Support"];
-    }
 
 
 }
