@@ -1,4 +1,4 @@
-import express from "express";
+const express = require("express");
 const app = express();
 const logger = console;
 /**
@@ -6,52 +6,8 @@ const logger = console;
  */
 const PORT = 3000;
 
-/**
- * The default menu structure.
- */
-const defaultMenu = () => ({
-  icon: "./public/icon.svg",
-  file: {
-    title: "File",
-    action: "/file"
-  },
-  skills: {
-    title: "Skills",
-    action: "/data/skills"
-  },
-  drives: {
-    title: "Drives",
-    action: "/data/drives"
-  },
-  traits: {
-    title: "Traits",
-    action: "/data/traits"
-  },
-  account: {
-    title: "Account",
-    menu: {
-      login: {
-        title: "Sign In",
-        rename: {
-          condition: "=logged",
-          title: "Change account",
-        },
-        action: "/account/login"
-      },
-      logout: {
-        title: "Sign Out",
-        hide: "!logged",
-        action: "/account/logout"
-      },
-      signup: {
-        title: "Register",
-        hide: "!logged",
-        action: "/account/register"
-      }
-    },
-    align: "right"
-  },
-});
+const {defaultMenu} = require("./lib/menu.js")
+
 
 /**
  * The menu stored in the memory.
