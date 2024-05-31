@@ -70,28 +70,30 @@ export class FileDao extends BasicDao {
     }
 
     create(value) {
-        if (this.validValue(value)) {
-            if (!this.busy) {
-                this.busy = true;
-                try {
-                    const added = this.checkValue(value);
-                    if (!this.#entries.has(added.id)) {
-                        this.#entries.set(added.id, added);
-                        this.writeSync().then(() => { resolve(true) }, (error) => {
-                            this.#entries.delete(added.id);
-                            reject(error)
-                        });
-                    } else {
-                        reject(new RangeError("Identifier already reserved"));
+        return new Promise((resolve, reject) => {
+            if (this.validValue(value)) {
+                if (!this.busy) {
+                    this.busy = true;
+                    try {
+                        const added = this.checkValue(value);
+                        if (!this.#entries.has(added.id)) {
+                            this.#entries.set(added.id, added);
+                            this.writeSync().then(() => { resolve(true) }, (error) => {
+                                this.#entries.delete(added.id);
+                                reject(error)
+                            });
+                        } else {
+                            reject(new RangeError("Identifier already reserved"));
+                        }
+                    } catch (error) {
+                        reject(new TypeError("Invalid value", { cause: error }));
                     }
-                } catch (error) {
-                    reject(new TypeError("Invalid value", { cause: error }));
+                    this.busy = false;
+                } else {
+                    setTimeout(() => { this.create(value).then(resolve, reject) }, 5);
                 }
-                this.busy = false;
-            } else {
-                setTimeout(() => { this.create(value).then(resolve, reject) }, 5);
             }
-        }
+        });
     }
 
     update(id, value) {
