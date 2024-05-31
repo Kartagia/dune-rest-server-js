@@ -1,0 +1,30 @@
+// @name GetAll
+GET http://localhost:3000/people
+
+###
+
+// @name GetSiriusFailure
+GET http://localhost:3000/people/Sirius
+
+###
+// @name CreateSirius
+POST http://localhost:3000/people/
+Content-Type: application/json
+
+{
+    "name":"Sirius"
+}
+
+###
+// @name GetAllWithSirius
+GET http://localhost:3000/people
+
+###
+// @name GetSirius
+GET http://localhost:3000/people/Sirius
+
+###
+// @name RemoveSirius
+DELETE http://localhost:3000/people/Sirius
+
+###
