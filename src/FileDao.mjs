@@ -4,9 +4,15 @@
  * @module dao/fileSystem
  */
 
+import path from "node:path";
 import { BasicDao } from "./BasicDao.mjs";
 import { readFile, writeFile } from 'node:fs/promises';
-import { require } from 'node:path';
+
+/**
+ * @typedef {Object} Logger
+ * @property {(...params) => void} log Logs given paramaters.
+ * @property {(...params) => void} error Error logs given parameters.
+ */
 
 /**
  * The DAO storing the data into persisting file.
@@ -22,22 +28,39 @@ export class FileDao extends BasicDao {
     #entries = new Map();
 
     /**
+     * Checker of the value, and possibly the identifier.
+     * @param {TYPE} value The checked value.
+     * @param {ID} [id] The optional identifier of the value.
+     * @returns {[ID, TYPE]} The valid entry generated from the alue and identifier.
+     * @throws {TypeError} The value was invalid. 
+     */
+    #valueChecker;
+
+    /**
      * Create a new file Dao using given filename. The DAO reads the 
      * file content on creation.
      * @param {string} fileName The filename for storing the data.
      * @param {Function} [reviver] The reviver converting the entries into JSON.
-     * @param {Funciton} [replacer] The replaccer used for parsing the file content.
+     * @param {Function} [replacer] The replaccer used for parsing the file content.
+     * @param {Logger} [logger] The logger logging messages. Defaults to console.
+     * @param {(value: TYPE, id?:ID) => [ID,TYPE]} [valueChecker] The checker of hte value.
+     * Defaults to the checker rejecting all valeus. 
      */
-    constructor(fileName, replacer = undefined, reviver = undefined, logger = console) {
+    constructor(fileName, replacer = undefined, reviver = undefined, logger = console, valueChecker = ((value, id = undefined) => { throw new TypeError("Invalid value") })) {
         super({
             all: () => (new Promise((resolve, reject) => {
             }))
         });
+        this.#valueChecker = valueChecker;
         this.fileName = this.checkFileName(fileName);
         this.busy = false;
         this.readSync();
         this.log = (...args) => { logger.log(...args) };
         this.error = (...args) => { logger.error(...args) };
+    }
+
+    checkFileName(fileName) {
+        return path.resolve(fileName);
     }
 
     all() {
@@ -75,11 +98,11 @@ export class FileDao extends BasicDao {
                 if (!this.busy) {
                     this.busy = true;
                     try {
-                        const added = this.checkValue(value);
-                        if (!this.#entries.has(added.id)) {
-                            this.#entries.set(added.id, added);
+                        const [id, added] = this.checkEntry(value);
+                        if (!this.#entries.has(id)) {
+                            this.#entries.set(id, added);
                             this.writeSync().then(() => { resolve(true) }, (error) => {
-                                this.#entries.delete(added.id);
+                                this.#entries.delete(id);
                                 reject(error)
                             });
                         } else {
@@ -148,7 +171,11 @@ export class FileDao extends BasicDao {
                     const [id, value] = entry;
                     if (this.validId(id)) {
                         if (this.validValue(value, id)) {
-                            result.push(entry);
+                            try {
+                                result.push(this.checkEntry(value, id));
+                            } catch (error) {
+                                throw new TypeError(`Invalid entry at ${index}`, { cause: error });
+                            }
                         } else {
                             throw new TypeError(`Invalid entry value at ${index}`);
                         }
@@ -172,7 +199,11 @@ export class FileDao extends BasicDao {
      * @return {boolean} True, if and only if the value is valid.
     */
     validValue(value, id = undefined) {
-        return true;
+        try {
+            this.checkValue(value, id);
+        } catch(error) {
+            return false;
+        }
     }
 
     /**
@@ -180,13 +211,24 @@ export class FileDao extends BasicDao {
      * @param {TYPE} value The tested value.
      * @param {ID} [id] TJhe id associated to the value. 
      * @returns {TYPE} The valid value derived from the value.
+     * @throws {TypeError} The value was invalid.
+     * @throws {RangeError} The identifier was given and was invalid.
      */
     checkValue(value, id = undefined) {
-        if (this.validValue(value, id)) {
-            return value;
-        } else {
-            throw new TypeError("Invalid value");
-        }
+        const entry = this.checkEntry(value, id);
+        return entry[1];
+    }
+
+    /**
+     * Check the validity of an entry.
+     * @param {TYPE} value The tested value.
+     * @param {ID} [id] TJhe id associated to the value. 
+     * @returns {[ID,TYPE]} The valid entry derived from the value and the id.
+     * @throws {TypeError} The value was invalid.
+     * @throws {RangeError} The identifier was given and was invalid.
+     */
+    checkEntry(value, id=undefined) {
+        return this.#valueChecker(value, id);
     }
 
     /**
