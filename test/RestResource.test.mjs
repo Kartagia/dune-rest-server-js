@@ -56,7 +56,7 @@ describe("class RestResource", function () {
         describe("RestResource<number, string>.checkParseId", function () {
           testValues
             .map((options) => {
-              return [options.caseName, options.parseId, orElse(options.parseId, RestResource.defaultIdParser)]
+              return [options.caseName, options.formatId, orElse(options.formatId, RestResource.defaultIdFormatter)]
             })
             .forEach(
               ([
