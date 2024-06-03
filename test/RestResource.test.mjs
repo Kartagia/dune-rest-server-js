@@ -53,7 +53,8 @@ describe("class RestResource", function () {
       ];
 
       describe(`Test ${testName}:`, function () {
-        describe("RestResource<number, string>.checkParseId", function () {
+        describe("RestResource<number, string>.checkIdFormatter", function () {
+            const tester = RestResource.checkIdFormatter;
           testValues
             .map((options) => {
               return [options.caseName, options.formatId, orElse(options.formatId, RestResource.defaultIdFormatter)]
@@ -68,13 +69,13 @@ describe("class RestResource", function () {
                 it(`Test ${caseName}`, function () {
                   if (expectedException !== undefined) {
                     expect(() => {
-                      RestResource.checkIdFormatter(testValue);
+                      tester(testValue);
                     }).to.throw(expectedException);
                   } else {
                     expect(() => {
                       RestResource.checkIdFormatter(testValue);
                     }).to.not.throw();
-                    const result = RestResource.checkIdFormatter(testValue);
+                    const result = tester(testValue);
                     expect(result).equal(expectedResult);
                   }
                 });
@@ -83,7 +84,36 @@ describe("class RestResource", function () {
         });
       });
 
-      describe("RestResource<number, string>.checkFormatId", function () {});
+      describe("RestResource<number, string>.checkIdParser", function () {
+        const tester = RestResource.checkIdParser;
+        testValues
+          .map((options) => {
+            return [options.caseName, options.parseId, orElse(options.parseId, 
+                RestResource.defaultIdParser)]
+          })
+          .forEach(
+            ([
+              caseName,
+              testValue,
+              expectedResult = undefined,
+              expectedException = undefined
+            ]) => {
+              it(`Test ${caseName}`, function () {
+                if (expectedException !== undefined) {
+                  expect(() => {
+                    tester(testValue);
+                  }).to.throw(expectedException);
+                } else {
+                  expect(() => {
+                    RestResource.checkIdFormatter(testValue);
+                  }).to.not.throw();
+                  const result = tester(testValue);
+                  expect(result).equal(expectedResult);
+                }
+              });
+            }
+          );
+      });
 
       describe("RestResource<number, string>.checkFormatValue", function () {});
 
