@@ -234,7 +234,7 @@ export class RestResource extends BasicDao {
    */
   static checkIdFormatter(formatFn) {
     if (formatFn === undefined) {
-      return this.defaultIdFormatter;
+      return (this ?? RestResource).defaultIdFormatter;
     } else if (formatFn instanceof Function && formatFn.length === 1) {
       return formatFn;
     } else {
@@ -264,7 +264,7 @@ export class RestResource extends BasicDao {
    */
   static checkIdParser(parseFn) {
     if (parseFn === undefined) {
-      return this.defaultIdParser;
+      return (this ?? RestResource).defaultIdParser;
     } else if (parseFn instanceof Function && parseFn.length === 1) {
       return parseFn;
     } else {
@@ -279,7 +279,7 @@ export class RestResource extends BasicDao {
    * @param {LinkGenerator<ID,TYPE>} [linkGenerator] The function generating the links of hte rest data for HATEOAS Rest.
    * @returns {ValueFormatter<ID,TYPE>} The value formatter function converting a resource value (and possible id) into Rest Data.
    */
-  static checkalueFormatter(valueFormatFn, linkGenerator = undefined) {
+  static checkValueFormatter(valueFormatFn, linkGenerator = undefined) {
     if (valueFormatFn === undefined) {
       /**
        * The result value formatting function.
