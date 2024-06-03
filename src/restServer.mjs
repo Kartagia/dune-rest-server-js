@@ -212,7 +212,19 @@ export function orElse(
  * @extends {BasicDao<string, RestData>}
  */
 export class RestResource extends BasicDao {
-  /**
+  
+    /**
+     * Convert the identifier to the JSON string representation.
+     * @type {IdFormatter<ID>} 
+     */
+  static defaultIdFormatter(id) {
+    try {
+        return JSON.stringify(id);
+    } catch (err) {
+        throw new RangeError("Invalid resource identifier", { cause: err });
+      }
+    }
+    /**
    * Create identifier formatter.
    * @template ID The identifeir type.
    * @param { IdFormatter<ID>|undefined} formatFn The formatter function.
@@ -222,7 +234,7 @@ export class RestResource extends BasicDao {
    */
   static checkIdFormatter(formatFn) {
     if (formatFn === undefined) {
-      return (/** @type {ID} */ id) => JSON.stringify(id);
+      return this.defaultIdFormatter;
     } else if (formatFn instanceof Function && formatFn.length === 1) {
       return formatFn;
     } else {
