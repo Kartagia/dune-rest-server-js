@@ -5,14 +5,106 @@ import { BasicDao } from "../src/BasicDao.mjs";
 import { RestResource, orElse } from "../src/restServer.mjs";
 
 describe("class RestResource", function () {
+
+  /**
+   * Default create identifier function.
+   * @param {string} value 
+   * @returns {number|undefined} The identifier for the given value.
+   */
+  function createId(/** @type {string) */ value) {
+    switch (value.normalize().toLowerCase(value)) {
+      case "zero":
+        return 0;
+      case "one":
+        return 1; 
+      case "two":
+        return 2; 
+      case "three":
+        return 3;
+        case "four":
+          return 4;
+      default:
+        return undefined;
+    }
+  }
+
   /**
    * The basic dao.
    * @type {BasicDao<number, string>}
    */
   [
-    ["Readonly empty BasicDao<number,string>", new BasicDao({}), []],
-    [],
-  ].forEach(
+    ["BasicDao<number,string>", []],
+    ["BasicDao<number,string> with members [[1, 'Three', 2, 'One', 3, 'Two']", [[1, 'Three'], [2, 'One'], [3, 'Two']]],
+    ["BasicDao<number,string> with members [[1, '1', 2, '2', 3, '3']", [[1, '1'], [2, '2'], [3, '3']]]
+  ].reduce( (result, [baseName, entries]) => {
+    [ ["Read only", {} ], 
+    ["Updateable", { update: true }], 
+    ["Removable", { remove: true }], 
+    ["Insertable", { createId }]].forEach( (prefix, supported) => {
+      const daoParam = {
+        entries, 
+        all() {
+          return Promise.resolve([...(this.entries)]);
+        },
+        update(id, value) {
+          if (supported.update) {
+          return new Promise( (resolve, reject) => {
+            const index = this.entries.findIndex( ([entryId]) => (entryId === id));
+            if (index >= 0) {
+              if (this.entries[index][1] !== value) {
+                this.entries.splice(index, 1, [id, value]);
+                resolve(true);  
+              } else {
+                resolve(false);
+              }
+            } else {
+              reject(new RangeError(`Cannot update non-existing value`));
+            }
+          });
+          } else {
+            return Promise.reject(new ReferenceError("Update not supported"))
+          }
+        },
+        remove(id) {
+          if (supported.remove) {
+            return new Promise( (resolve, reject) => {
+              const count = this.entries.length;
+              this.entries = this.entries.filter( (entry) => (entry[0] !== id));
+              resolve(this.entries.length !== count);
+            })
+          } else {
+            return Promise.reject(new ReferenceError("Removal not supported"));
+          }
+        }, 
+        create(value) {
+          if (supported.createId) {
+            return new Promise( (resolve, reject) => {
+              const id = supported.createId(value);
+              const entry = this.entries.find( (entry) => (entry[0] === id));
+              if (entry) {
+                reject(new RangeError("Identifier already reserverd"))
+              } else {
+                const id = supported.createId(value);
+                if (id === undefined) {
+                  reject(new TypeError("Invalid new value"));
+                } else {
+                  this.entreis = [...this.entries, [id, value]];
+                  resolve(true);
+                }
+              }
+            })
+          } else {
+            return Promise.reject(new ReferenceError("Create not supported"));
+          }
+        }
+      };
+      result.push([`${prefix} ${baseName}`, new BasicDao(daoParam), entries, 
+        supported.createId
+      ]);
+    });
+    return result;
+  }, []
+).forEach(
     ([
       testName,
       testDao,
@@ -120,4 +212,8 @@ describe("class RestResource", function () {
       describe("RestResource<number, string>.checkParseValue", function () {});
     }
   );
+
+  describe("Construction", function() {
+
+  } )
 });
