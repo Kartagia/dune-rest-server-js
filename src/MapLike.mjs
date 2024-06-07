@@ -4,6 +4,126 @@
  * The library implementing MapLike interface.
  */
 
+import { assert } from "chai";
+
+
+
+/**
+ * The log level of the module.
+ */
+let logLevel = undefined;
+
+/**
+ * @typedef {"debug"|"warn"|"info"|"error"|undefined} LOG_LEVEL;
+ */
+
+/**
+ * Does the current log level include the given log level.
+ * @param {LOG_LEVEL} level The tested level.
+ * @returns {boolean} True, if and only if the current log level
+ * means given log level is triggered.
+ */
+function isLogLevel(level) {
+  switch (level) {
+    case "debug":
+      if (logLevel === "debug") return true;
+    case "warn":
+      if (logLevel === "warn") return true;
+    case "info":
+      if (logLevel === "info") return true;
+    case "error":
+      if (logLevel === "error") return true;
+    case undefined:
+      return false;
+    default:
+      // Unknown log level is never matched.
+      return false;
+  }
+}
+
+/**
+ * A basic logger interface.
+ * @typedef {Object} Logger
+ * @property {(message: string) => undefined} log Logs the message.
+ * @property {(message: string) => undefined} error Logs an error message.
+ * @property {(message: string) => undefined} debug Logs a debug message.
+ */
+
+/**
+ * The registered loggers used for the module logging.
+ * @type {Logger[]}
+ */
+let loggers = [];
+
+/**
+ * Registers a logger into leggers.
+ * @param {Logger} logger The used logger.
+ * @returns {() => void} The function unregistering the logger.
+ */
+export function registerLogger(logger) {
+  if (
+    logger instanceof Object &&
+    ["log", "error", "debug"].every(
+      (method) =>
+        method in logger &&
+        logger[method] instanceof Function &&
+        logger[method].length === 1
+    )
+  ) {
+    this.loggers.push(logger);
+    return () => {
+      unregisterLogger(logger);
+    };
+  } else {
+    throw new TypeError("Invalid logger");
+  }
+}
+
+/**
+ * Removes the most recent registration of the logger.
+ * @param {Logger} logger The removed logger.
+ */
+function unregisterLogger(logger) {
+  let index = this.loggers.indexOf(logger, 0);
+  if (index >= 0) {
+    let nextIndex = this.loggers.indexOf(logger, index);
+    while (nextIndex >= 0) {
+      index = nextIndex;
+      let nextIndex = this.loggers.indexOf(logger, index);
+    }
+  }
+  if (index >= 0) {
+    loggers.splice(index, 1);
+  }
+}
+
+/**
+ * Set the current log level.
+ * @param {LOG_LEVEL} newLevel
+ */
+export function setLogLevel(newLevel) {
+  debugLevel = newDebugLevel;
+}
+
+export function log(message, level = "info") {
+  if (loggers.length && isLogLevel(level)) {
+    loggers.forEach( log => {log.log(message)});
+  }
+}
+
+export function error(message, level = "error") {
+  if (loggers.length && isLogLevel(level)) {
+    loggers.forEach( log => {log.error(message)});
+  }
+}
+
+export function debug(message, level = "debug") {
+  if (loggers.length && isLogLevel(level)) {
+    loggers.forEach( log => {log.debug(message)});
+  }
+}
+
+
 /**
  * The equality test.
  * @template VALUE
@@ -134,6 +254,110 @@
  */
 
 /**
+ * @template TYPE
+ * @param {TYPE[]} target The target array.
+ * @param {number} index The altered index.
+ * @param {TYPE} newValue The new valeu.
+ * @returns {TYPE[]} The target with value at index removed, and new value added to the end.
+ */
+export function deleteAndPush(target, index, newValue) {
+  console.log(`Removing ${index} and pushing new value`);
+  target.splice(index, 1);
+  target.push(newValue);
+  return target;
+}
+
+/**
+ * @template TYPE
+ * @param {TYPE[]} source The source array.
+ * @param {number} index The altered index.
+ * @param {TYPE} newValue The new valeu.
+ * @returns {TYPE[]} A new array derive dfrom tearget by removing the value at index, and
+ * appending new value to the end.
+ */
+export function filterAndAppend(source, index, newValue) {
+  console.log(
+    `Create new array with removing ${index} and appending new value`
+  );
+  return [...source.filter((_, i) => i !== index), newValue];
+}
+
+/**
+ * @template TYPE
+ * @param {TYPE[]} target The target array.
+ * @param {number} index The altered index.
+ * @param {TYPE} newValue The new valeu.
+ * @returns {TYPE[]} The target with value at index replaced iwth new value.
+ */
+export function replace(target, index, newValue) {
+  console.log(`Replace ${index} with new value`);
+  target.splice(index, 1, newValue);
+  return target;
+}
+
+/**
+ * @template TYPE
+ * @param {TYPE[]} source The target array.
+ * @param {number} index The altered index.
+ * @param {TYPE} newValue The new valeu.
+ * @returns {TYPE[]} A new array derived from target by replacing value at index with new value.
+ */
+export function replaceCreateNew(source, index, newValue) {
+  console.log(`Create a new array replacing ${index} with new value`);
+  return [...source.slice(0, index), newValue, ...source.slice(index + 1)];
+}
+
+/**
+ * @template TYPE
+ * @param {TYPE[]} target The target array.
+ * @param {number} index The altered index.
+ * @param {TYPE} newValue The new valeu.
+ * @returns {TYPE[]} The target with new value added to the end.
+ */
+export function push(target, newValue) {
+  console.log(`Pushing new value`);
+  const size = target.length;
+  const newSize = target.push(newValue);
+  assert(size + 1 === newSize, `The value was not added!`);
+  return target;
+}
+
+/**
+ * @template TYPE
+ * @param {TYPE[]} source The target array.
+ * @param {number} index The altered index.
+ * @param {TYPE} newValue The new valeu.
+ * @returns {TYPE[]} A new array with values of the source followed by the new value.
+ */
+export function append(source, newValue) {
+  console.debug(`Appending new value`);
+  return [...source, newValue];
+}
+
+export function elementToString(element) {
+  switch (typeof element) {
+    case "string":
+      return `"${element}"`;
+    case "undefined":
+      return `undefined`;
+    case "symbol":
+      return `Symbol ${Symbol.keyFor(element)}`;
+    case "function":
+      return `Function ${element.name}`;
+    case "object":
+      if (element === null) {
+        return "null";
+      } else if (Array.isArray(element)) {
+        return `[${element.map(elementToString).join(",")}]`;
+      } else {
+        return `Object of ${Object.getPrototypeOf(element)}`;
+      }
+    default:
+      return String(element);
+  }
+}
+
+/**
  * Check map entries.
  * @template KEY The type of the key.
  * @template VALUE THe type of the value.
@@ -145,25 +369,45 @@
  * @throws {RangeError} Any key was invalid.
  * @throws {TypeError} Any value was invalid.
  */
-export function checkMapEntries(iterable = [], options = {}) {
+export function checkMapEntries(
+  iterable = /** @type {[KEY,VALUE]} */ [],
+  options = {}
+) {
   /** @type {Iterator<any>} */
+  /**
+   * @type {Iterator<[KEY,VALUE]>}
+   */
   const iterator = iterable[Symbol.iterator]();
   let cursor = iterator.next();
+  if (
+    !(
+      ("done" in cursor && typeof cursor.done === "boolean") ||
+      "value" in cursor
+    )
+  ) {
+    error("Iterable was not iterable");
+    throw new ReferenceError("Iterable not iterable!");
+  }
   /** @type {[KEY,VALUE][]} */
-  let result = options.entries
-    ? options.createNewResult
-      ? [...options.entries]
-      : options.entries
-    : /** @type {[KEY,VALUE][]} */ [];
-  const equalKey = options.equalKey ?? ReadOnlyMapLike.SameValueZero;
-  const validKey = options.validKey ?? ((/** @type {KEY} */ key) => true);
+  let result =
+    "entries" in options
+      ? options.createNewResult
+        ? [...options.entries]
+        : options.entries
+      : /** @type {[KEY,VALUE][]} */ [];
+  const equalKey = options.equalKey ?? SameValueZeroEquality;
+  const validKey = options.validKey ?? ((/** @type {KEY} */ _key) => true);
   const validValue =
-    options.validValue ?? ((/** @type {VALUE} */ value) => true);
+    options.validValue ?? ((/** @type {VALUE} */ _value) => true);
   const validEntry =
     options.validEntry ??
     (([/** @type {KEY} */ key, /** @type {VALUE} */ value]) =>
       validKey(key) && validValue(value));
-  while (!cursor.done) {
+
+  debug("Iterating the values.");
+  let index = 0;
+  while (cursor && !cursor.done) {
+    debug(`Entry #${index} exists`);
     if (
       !Array.isArray(cursor.value) ||
       cursor.value.length !== 2 ||
@@ -171,53 +415,115 @@ export function checkMapEntries(iterable = [], options = {}) {
     ) {
       throw new SyntaxError("Invalid entry.");
     }
-    if (!validKey(cursor.value[0])) {
+    const [addedKey, addedValue] = cursor.value;
+    debug(`Entry #${index} is two value tuple`);
+    if (!validKey(addedKey)) {
       throw new RangeError("Invalid key of map");
     }
-    if (!validValue(cursor.value[1])) {
+    debug(`Entry #${index} has valid key ${String(addedKey)}`);
+    if (!validValue(addedValue)) {
       throw new TypeError("Invalid value of map");
     }
-    const indexOf = result.findIndex(([entryKey]) =>
-      equalId(entryKey, options.value[0])
+    debug(`Entry #${index} has valid value ${String(addedValue)}`);
+    const indexOf = result.findIndex(([entryKey, _entryValue]) =>
+      equalKey(entryKey, addedValue)
     );
     if (indexOf >= 0) {
       // Duplicate.
+      debug(`Entry #${indexOf} has existing key`);
       if (options.refuseDuplicates ?? false) {
         throw new RangeError("Duplicate keys not allwoed");
       } else if (options.createNewResult) {
         if (options.replaceToEnd) {
-          result = [
-            ...result.filter(
-              ([entryKey]) => !equalKey(entryKey, cursor.value[0])
-            ), // The old result without replaced entry
-            [...cursor.value], // The new entry to the end.
-          ];
+          result = filterAndAppend(result, indexOf, [addedKey, addedValue]);
         } else {
-          result = [
-            ...result.slice(0, indexOf), // Head.
-            [...cursor.value], // New etnry
-            ...result.slice(indexOf + 1), // tail.
-          ];
+          result = replaceCreateNew(result, indexOf, [addedKey, addedValue]);
         }
       } else if (options.replaceToEnd) {
-        // Replacing to the end of the result.
-        result.splice(indexOf, 1);
-        result.push([...cursor.value]);
+        result = deleteAndPush(result, indexOf, [addedKey, addedValue]);
       } else {
         // Changing the result.
-        result.splice(indexOf, 1, [...cursor.value]);
+        result = replace(result, indexOf, [addedKey, addedValue]);
       }
     } else {
       // No duplicate.
-      result.push(cursor.value);
+      if (options.createNewResult) {
+        result = append(result, [cursor.value[0], cursor.value[1]]);
+      } else {
+        result = push(result, [cursor.value[0], cursor.value[1]]);
+      }
     }
 
     // Moving to next element.
+    if (result) {
+      debug(`Current result: ${elementToString(result)}`);
+    } else {
+      debug(`Result does not exist!`);
+    }
     cursor = iterator.next();
+    debug(
+      `Acquired ${cursor.done ? "non-existing" : "existing"} next value`
+    );
+    index++;
+    debug(`Index incremented to ${index}`);
   }
 
   // Return the reuslt.
   return result;
+}
+
+/**
+ * The Same Value Zero equlaity of the ECMA Script standard.
+ * @template TYPE
+ * @type {Equality<TYPE>}
+ */
+export function SameValueZeroEquality(
+  /** @type {TYPE} */ tested,
+  /** @type {TYPE} */ testee
+) {
+  return (
+    tested === testee ||
+    (typeof testee == typeof tested &&
+      typeof testee === "number" &&
+      testee !== testee &&
+      tested !== tested)
+  );
+}
+
+/**
+ * The Same Value equality of the ECMA Script. This is equal to Object.is.
+ * @template TYPE The tested types.
+ * @type {Equality<TYPE>}
+ */
+export function SameValueEquality(
+  /** @type {TYPE} */ tested,
+  /** @type {TYPE} */ testee
+) {
+  return Object.is(tested, testee);
+}
+
+/**
+ * The strict equality.
+ * @template TYPE The tested type.
+ * @type {Equality<TYPE>}
+ */
+export function StrictEquality(
+  /** @type {TYPE} */ tested,
+  /** @type {TYPE} */ testee
+) {
+  return tested === testee;
+}
+
+/**
+ * The loose equality.
+ * @template TYPE The tested type.
+ * @type {Equality<TYPE>}
+ */
+export function LooseEquality(
+  /** @type {TYPE} */ tested,
+  /** @type {TYPE} */ testee
+) {
+  return tested == testee;
 }
 
 /**
@@ -239,60 +545,37 @@ export class BasicReadOnlyMapLike {
    * @throws {RangeError} Any key was invalid.
    * @throws {TypeError} Any value was invalid.
    */
-  static checkMapEntries = checkMapEntries;
+  checkMapEntries(iterable = undefined, options = {}) {
+    return checkMapEntries(iterable, options);
+  }
 
   /**
    * The same value zero equality.
    * @template TYPE The tested type.
    * @type {Equality<TYPE>}
    */
-  static SameValueZero = (
-    /** @type {TYPE} */ tested,
-    /** @type {TYPE} */ testee
-  ) => {
-    return (
-      tested === testee ||
-      (typeof testee == typeof tested &&
-        typeof testee === "number" &&
-        testee !== tested)
-    );
-  };
+  static SameValueZero = SameValueZeroEquality;
 
   /**
    * The same value equality.
    * @template TYPE The tested type.
    * @type {Equality<TYPE>}
    */
-  static SameValueZero = (
-    /** @type {TYPE} */ tested,
-    /** @type {TYPE} */ testee
-  ) => {
-    return Object.is(tested, testee);
-  };
+  static SameValueZero = SameValueZeroEquality;
 
   /**
    * The strict equality.
    * @template TYPE The tested type.
    * @type {Equality<TYPE>}
    */
-  static StrictEquals = (
-    /** @type {TYPE} */ tested,
-    /** @type {TYPE} */ testee
-  ) => {
-    return tested === testee;
-  };
+  static StrictEquals = StrictEquality;
 
   /**
    * The loose equality.
    * @template TYPE The tested type.
    * @type {Equality<TYPE>}
    */
-  static LooseEquals = (
-    /** @type {TYPE} */ tested,
-    /** @type {TYPE} */ testee
-  ) => {
-    return tested == testee;
-  };
+  static LooseEquals = LooseEquality;
 
   /**
    * The default key equality function.
@@ -316,7 +599,7 @@ export class BasicReadOnlyMapLike {
   constructor(iterable = undefined, options = {}) {
     this.options = options;
     if (iterable) {
-      this.#entries = thic.checkMapEntries(iterable, options);
+      this.#entries = this.checkMapEntries(iterable, options);
     }
   }
 
@@ -355,14 +638,18 @@ export class BasicReadOnlyMapLike {
    * @returns {boolean} True, if and only if the map has entry with key.
    */
   has(key) {
-    return this.#entries.findIndex(([entryKey]) => this.equalKey(key, entryKey)) >= 0;
+    return (
+      this.#entries.findIndex(([entryKey]) => this.equalKey(key, entryKey)) >= 0
+    );
   }
 
   /**
    * @inheritdoc
    */
   get(key) {
-    const result = this.#entries.find( ([entryKey]) => this.equalKey(key, entryKey));
+    const result = this.#entries.find(([entryKey]) =>
+      this.equalKey(key, entryKey)
+    );
     return result ? result[1] : undefined;
   }
 
@@ -371,15 +658,15 @@ export class BasicReadOnlyMapLike {
   }
 
   values() {
-    return this.#entries.map( ([_, value]) => (value));
+    return this.#entries.map(([_, value]) => value);
   }
 
   keys() {
-    return this.#entries.map( ([key]) => (key));
+    return this.#entries.map(([key]) => key);
   }
 
   entries() {
-    return this.#entries.map( ([key, value]) => ([key, value]));
+    return this.#entries.map(([key, value]) => [key, value]);
   }
 
   [Symbol.iterator]() {
@@ -388,12 +675,11 @@ export class BasicReadOnlyMapLike {
 
   /**
    * Perform a consumer function for every entry.
-   * @param {(entry: [KEY,VALUE], index?: number)} consumerFn 
+   * @param {(entry: [KEY,VALUE], index?: number)} consumerFn
    */
   forEach(consumerFn) {
     this.entries().forEach(consumerFn);
   }
-
 }
 
 /**
@@ -448,13 +734,13 @@ export class BasicMutableMapLike {
     this.createNewResult = options.createNewResult;
     this.replaceToEnd = options.replaceToEnd;
     if (options.entries) {
-        this.#entries = this.checkMapEntries(undefined, options);
+      this.#entries = this.checkMapEntries(undefined, options);
     }
   }
 
   /**
    * Perform a consumer function for every entry.
-   * @param {(entry: [KEY,VALUE], index?: number)} consumerFn 
+   * @param {(entry: [KEY,VALUE], index?: number)} consumerFn
    */
   forEach(consumerFn) {
     this.entries().forEach(consumerFn);
@@ -466,14 +752,18 @@ export class BasicMutableMapLike {
    * @returns {boolean} True, if and only if the map has entry with key.
    */
   has(key) {
-    return this.#entries.findIndex(([entryKey]) => this.equalKey(key, entryKey)) >= 0;
+    return (
+      this.#entries.findIndex(([entryKey]) => this.equalKey(key, entryKey)) >= 0
+    );
   }
 
   /**
    * @inheritdoc
    */
   get(key) {
-    const result = this.#entries.find( ([entryKey]) => this.equalKey(key, entryKey));
+    const result = this.#entries.find(([entryKey]) =>
+      this.equalKey(key, entryKey)
+    );
     return result ? result[1] : undefined;
   }
 
@@ -482,21 +772,20 @@ export class BasicMutableMapLike {
   }
 
   values() {
-    return this.#entries.map( ([_, value]) => (value));
+    return this.#entries.map(([_, value]) => value);
   }
 
   keys() {
-    return this.#entries.map( ([key]) => (key));
+    return this.#entries.map(([key]) => key);
   }
 
   entries() {
-    return this.#entries.map( ([key, value]) => ([key, value]));
+    return this.#entries.map(([key, value]) => [key, value]);
   }
 
   [Symbol.iterator]() {
     return this.#entries[Symbol.iterator]();
   }
-
 
   /**
    * Set the value of the value of an entry.
@@ -509,43 +798,57 @@ export class BasicMutableMapLike {
    */
   set(key, value) {
     const [entryKey, entryValue] = this.checkEntry([key, value]);
-    const index = this.entries.findIndex( ([currentKey]) =>this.equalKey(currentKey, entryKey));
+    const index = this.entries.findIndex(([currentKey]) =>
+      this.equalKey(currentKey, entryKey)
+    );
     if (index >= 0) {
-        if (this.createNewResult) {
-            this.#entries = (this.replaceToEnd ?
-                [ ...this.#entries.filter( ([currentKey]) =>!this.equalKey(currentKey, entryKey)), [entryKey,entryValue]] : 
-            [...this.#entries.slice(0, index), [entryKey, entryValue], ...this.#entries.slice(index+1)]);
-        } else {
-            this.#entries.splice(index, 1, [entryKey, entryValue]);
-        }
+      if (this.createNewResult) {
+        this.#entries = this.replaceToEnd
+          ? [
+              ...this.#entries.filter(
+                ([currentKey]) => !this.equalKey(currentKey, entryKey)
+              ),
+              [entryKey, entryValue],
+            ]
+          : [
+              ...this.#entries.slice(0, index),
+              [entryKey, entryValue],
+              ...this.#entries.slice(index + 1),
+            ];
+      } else {
+        this.#entries.splice(index, 1, [entryKey, entryValue]);
+      }
     } else if (this.createNewResult) {
-        this.#entries = [...this.#entries, [entryKey, entryValue]];
+      this.#entries = [...this.#entries, [entryKey, entryValue]];
     } else {
-        this.#entries.push([entryKey, entryValue]);
+      this.#entries.push([entryKey, entryValue]);
     }
-    if (this.validKey(key))
-    return this;
+    if (this.validKey(key)) return this;
   }
 
   clear() {
     if (this.createNewResult) {
-        this.#entries = [];
+      this.#entries = [];
     } else {
-        this.#entries.clear();
+      this.#entries.clear();
     }
   }
 
   delete(key) {
-    const index = this.#entries.findIndex( ([currentKey])=>this.equalkKey(currentKey, key));
+    const index = this.#entries.findIndex(([currentKey]) =>
+      this.equalkKey(currentKey, key)
+    );
     if (index >= 0) {
-        if (this.createNewResult) {
-            this.#entries = this.#entries.filter( (_, entryIndex) => (entryIndex !== index));
-        } else {
-            this.#entries.splice(index, 1);
-        }
-        return true;
+      if (this.createNewResult) {
+        this.#entries = this.#entries.filter(
+          (_, entryIndex) => entryIndex !== index
+        );
+      } else {
+        this.#entries.splice(index, 1);
+      }
+      return true;
     } else {
-        return false;
+      return false;
     }
   }
 }
