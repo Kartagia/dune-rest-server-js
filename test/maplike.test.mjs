@@ -16,105 +16,29 @@ import {
 import {
   debug,
   error,
-  log,
   setLogLevel,
+  getLogLevel,
   registerLogger,
 } from "../src/MapLike.mjs";
+import { testTestCase, testTestCaseTemplate } from "../src/testlib/testlib.mjs";
+
 /**
- * Test function testing a construction.
- * @template {TESTED extends Function} TESTED The tested object constructor function.
- * @template [PARAM=any[]] The tested construction parameters.
- * @template [EXCEPTION=any] The exception type the test may throw.
- * @callback ConstructorTestFunction
- * @param {PARAM} [param] The parameters passed to the constructor.
- * @returns {TESTED} The created instance of tested.
- * @throws {EXCEPTION} The cosntruction failed.
+ * The test case.
+ * @template TESTED
+ * @template PARAM
+ * @template RETURN
+ * @template EXCEPTION
+ * @typedef {import("../src/testlib/testlib.mjs").TestCase<TESTED,PARAM,RETURN,EXCEPTION>} TestCase
  */
 
 /**
- * A constructor test case.
- * @template {TESTED extends Function} TESTED The tested value.
- * @template [PARAM=any[]] The test parameters.
- * @template [EXCEPTION=any] The exception type the test may throw.
- * @typedef {Object} ConstructorTestCase
- * @property {string} name The test case name.
- * @property {ConstructorTestFunction<TESTED,PARAM,EXCEPTION>} test The test function.
- * @property {EXCEPTION|undefined} [expectedException] The expected excpetion.
+ * The test case.
+ * @template TESTED
+ * @template PARAM
+ * @template RETURN
+ * @template EXCEPTION
+ * @typedef {import("../src/testlib/testlib.mjs").TestCaseTemplate<TESTED,PARAM,RETURN,EXCEPTION>} TestCaseTemplate
  */
-
-/**
- * Test function testing a soemthing on an a value.
- * @template TESTED The tested value.
- * @template [PARAM] The test parameters.
- * @template [RESULT=undefined] THe result type of the test function.
- * @template [EXCEPTION=any] The exception type the test may throw.
- * @callback TestFunction
- * @param {TESTED} tested The tested value.
- * @param {PARAM=any[]} [param] The parameters of the test.
- * @returns {RESULT} The retulr value of the test.
- * @throws {EXCEPTION} The exception type of the test.
- */
-
-/**
- * A test case.
- * @template TESTED The tested value.
- * @template [PARAM=any[]] The test parameters.
- * @template [RESULT=undefined] THe result type of the test function.
- * @template [EXCEPTION=any] The exception type the test may throw.
- * @typedef {Object} TestCase
- * @property {string} name The test case name.
- * @property {TESTED} tested The tested value.
- * @property {PARAM} param The parameters of the test case.
- * @property {TestFunction<TESTED,PARAM,RESULT,EXCEPTION>} test The test function.
- * @property {RESULT|undefined} [expectedResult] The expected result.
- * @property {EXCEPTION|undefined} [expectedException] The expected excpetion.
- */
-
-/**
- * @template TESTED The tested value.
- * @template [PARAM=any[]] The test parameters.
- * @template [RESULT=undefined] THe result type of the test function.
- * @template [EXCEPTION=any] The exception type the test may throw.
- * @typedef {Object} TestCaseTemplate
- * @property {string} name The name of the template.
- * @property {TESTED} tested The tested value used by default.
- * @property {Partial<TestCase<TESTED, PARAM, RESULT,EXCEPTION>>[]} [testCases=[]] The test cases.
- */
-
-describe("Testing SameValueZeroEquality", function () {
-  const op = "SameValueZero";
-  const opFunc = SameValueZeroEquality;
-  [
-    [-0, +0, true],
-    [-0, -0, true],
-    [-0, 1, false],
-    ["a", "b", false],
-  ].forEach(([tested, testee, expected], index) => {
-    const testName = `${elementToString(tested)} ${op} ${elementToString(
-      testee
-    )} === ${elementToString(expected)}`;
-    log(`Testing #${index}:` + testName);
-    it(`Test case #${index}: ${testName}`, function () {
-      log(`Testing case #${index}:` + testName);
-      expect(() => {
-        opFunc(tested, testee);
-      }).not.throw;
-      const result = opFunc(tested, testee);
-      expect(
-        result,
-        `The result was ${elementToString(result)} instead of ${elementToString(
-          expected
-        )}`
-      ).equal(expected);
-      expect(result, `Equality did not return a boolean value`).a("boolean");
-      log(
-        `${elementToString(tested)} ${op} ${elementToString(
-          testee
-        )}} was ${elementToString(result)}`
-      );
-    });
-  });
-});
 
 it("Testing Array[Symbol.iterable]", function () {
   const source = [
@@ -135,6 +59,11 @@ it("Testing Array[Symbol.iterable]", function () {
     `The iteration returned ${index} istead of ${source.length}`
   ).equal(source.length);
 });
+
+/**
+ * The excepitons of the check map entries.
+ * @typedef {RangeError|SyntaxError|TypeError} CheckMapEntriesExceptions
+ */
 
 describe("method checkMapEnries", function () {
   it("Entries []", function () {
@@ -165,7 +94,7 @@ describe("method checkMapEnries", function () {
       [2, 2],
       [3, 3],
     ],
-  ].forEach((source) => {
+  ].forEach((source, index) => {
     it(`Entries ${elementToString(source)}`, function () {
       let result;
       expect(() => {
@@ -173,6 +102,92 @@ describe("method checkMapEnries", function () {
         debug(`Got result ${elementToString(result)}`);
       }).not.throw();
     });
+    /**
+     * @type {import("../src/MapLike.mjs").MapLikeOptions<number,number>[]}
+     */
+    const testedOptions = [
+      [
+        { refuseDuplicates: true },
+        function (_, index) {
+          return index === 3;
+        },
+      ],
+      [
+        { validKey: (key) => key % 2 != 0 },
+        undefined,
+        function (_, index) {
+          return index !== 0;
+        },
+      ],
+      [
+        {
+          validEntry: (entry) => Array.isArray(entry) && entry.length === 2,
+          validKey: (key) => key % 2 != 0,
+        },
+        undefined,
+        undefined,
+        function (_, index) {
+          return index !== 0;
+        },
+      ], 
+      [
+        ({
+          validEntry: (entry) => Array.isArray(entry) && entry.length === 2,
+          validValue: (key) => key % 2 != 0,
+        },
+        undefined,
+        undefined,
+        undefined,
+        function (_, index) {
+          return index !== 0;
+        })
+      ],
+    ];
+    testedOptions.forEach(
+      ([
+        options,
+        hasDuplicates = undefined,
+        hasInvalidEntry = undefined,
+        hasInvalidKey = undefined,
+        hasInvalidValue = undefined,
+      ]) => {
+        it(`Entries ${elementToString(
+          source
+        )} with options ${mapLikeOptionsToString(options)}`, function () {
+          const equalKey = options.equalKey ?? SameValueZeroEquality;
+          let result;
+          if (hasDuplicates && hasDuplicates(options, index)) {
+            expect(() => {
+              result = checkMapEntries(source, options);
+            }).to.throw(RangeError);
+          } else if (hasInvalidEntry && hasInvalidEntry(options, index)) {
+            expect(() => {
+              result = checkMapEntries(source, options);
+            }).to.throw(SyntaxError);
+          } else if (hasInvalidKey && hasInvalidKey(options, index)) {
+            expect(() => {
+              result = checkMapEntries(source, options);
+            }).to.throw(RangeError);
+          } else if (hasInvalidValue && hasInvalidValue(options, index)) {
+            expect(() => {
+              result = checkMapEntries(source, options);
+            }).to.throw(TypeError);
+          } else {
+            expect(() => {
+              result = checkMapEntries(source, options);
+            }).not.throw();
+            source.forEach(([key, value]) => {
+              const entry = result.find(([entryKey]) =>
+                equalKey(entryKey, key)
+              );
+              expect(entry).length(2);
+              expect(entry[0]).equal(key);
+              expect(entry[1]).equal(value);
+            });
+          }
+        });
+      }
+    );
   });
 });
 
@@ -267,75 +282,199 @@ describe("class ReadOnlyMapLike", function () {
   });
 });
 
-/**
- * Test the test case.
- * @template TESTED The tested object.
- * @template PARAM The paramter type of the test fucntion opbject.
- * @template RESULT THe result type of the test function.
- * @template EXCEPTION The error type of the test fucntion.
- * @param {TestCase<TESTED,PARAM,RESULT,EXCEPTION>} testCase The tested test case.
- * @param {number} index The index of the test case.
- * @throws {AssertionError} The test failed.
- */
-export function testTestCase(testCase, index) {
-  it(`Test Case ${index === undefined ? "" : `#${index}`}: ${
-    testCase.name ?? ""
-  }`, function () {
-    if (testCase.exception === undefined) {
-      // The test case does not throw excpetion.
-      let result;
-      expect(() => {
-        result = testCase.test(testCase.tested, testCase.params);
-      }).not.throw;
-      expect(result).equal(testCase.expectedResult);
-    } else {
-      // Test case throws exception.
-      expect(() => {
-        testCase.test(testCase.tested, testCase.params);
-      }).throws(testCase.expectedException);
-    }
-  });
-}
+describe("checkMapElements with altering options", function () {
+  const testFn = (
+    /** @type {Iterable<[KEY,VALUE]>} */ iterable,
+    /** @type {MapLikeOptions<KEY,VALUE>} */ options
+  ) => {
+    return checkMapEntries(iterable, options);
+  };
+
+  /**
+   * The test cases.
+   * @template [KEY=number]
+   * @template [VALUE=number]
+   * @type {TestCase<Iterable<KEY,VALUE>, [import("../src/MapLike.mjs").MapLikeOptions<KEY,VALUE>], [KEY,VALUE][], CheckMapEntriesExceptions>[]}
+   */
+  (
+    [
+      { nameSuffix: "Empty" },
+      {
+        nameSuffix: `${elementToString([
+          [1, 1],
+          [2, 2],
+          [3, 3],
+        ])}`,
+        tested: [
+          [1, 1],
+          [2, 2],
+          [3, 3],
+        ],
+      },
+      {
+        nameSuffix: `${elementToString([
+          [1, 1],
+          [2, 2],
+          [3, 3],
+        ])}`,
+        tested: [
+          [1, 1],
+          [2, 2],
+          [3, 3],
+        ],
+        params: {
+          createNewResult: true,
+        },
+      },
+    ].map(
+      (
+        {
+          /** @type {Iterable<[KEY,VALUE]>} */ entries,
+          /** @type {import("../src/MapLike.mjs").MapLikeOptions<KEY,VALUE>} */ params,
+          /** @type {CheckMapEntriesExceptions|undefined} */ expectedException = undefined,
+          /** @type {[KEY,VALUE][]|undefined} */ expectedResult = undefined,
+          /** @type {string|undefined} */ nameSuffix = undefined,
+        },
+        /** @type {number} */ index
+      ) => {
+        const testName = `${
+          params === undefined
+            ? "Without options"
+            : `With options ${mapLikeOptionsToString(params)}`
+        }: ${nameSuffix ?? ""}`;
+        /**
+         * @type {TestCase<Iterable<[KEY,VALUE]>,[import("../src/MapLike.mjs").MapLikeOptions<KEY,VALUE>],[KEY,VALUE][],CheckMapEntriesExceptions>}
+         */
+        const result = {
+          name: testName,
+          tested: entries,
+          param: params == null ? [params] : undefined,
+          test: testFn,
+          expectedException,
+          expectedResult,
+        };
+        return result;
+      }
+    )
+  ).forEach(testTestCase);
+});
 
 /**
- * Test the test case template.
- * @template TESTED The tested object.
- * @template PARAM The paramter type of the test fucntion opbject.
- * @template RESULT THe result type of the test function.
- * @template EXCEPTION The error type of the test fucntion.
- * @param {TestCaseTemplate<TESTED,PARAM,RESULT,EXCEPTION>} test
- * @param {number} [index] The index of the test, if it is part of other tests.
+ * @template KEY  The type of the maplike key.
+ * @tempalte VALUE The value of the maplike value.
+ * @param {import("../src/MapLike.mjs").MapLikeOptions<KEY,VALUE>} options
+ * @returns {string} The string containing the human readable representation
+ * of the options.
  */
-export function testTestCaseTemplate(test, index = undefined) {
-  if ("testCases" in test && test.testCases.length > 0) {
-    describe(`Test ${index === undefined ? "" : `#${index}`}:${
-      test.name ?? ""
-    }`, function () {
-      test.testCases.forEach((testCase, caseIndex) => {
-        const caseName = testCase.name ?? test.name ?? "";
-        const caseTested = testCase.tested ?? test.tested;
-        const caseParam = testCase.param ?? test.param;
-        const caseExpected = testCase.result ?? test.result;
-        const caseTester = testCase.test ?? test.test;
-        const caseException = testCase.exception ?? test.exception;
-        testTestCase(
-          {
-            name: caseName,
-            tested: caseTested,
-            param: caseParam,
-            expectedResult: caseExpected,
-            exceptionExcpetion: caseException,
-          },
-          caseIndex
-        );
-      });
-    });
-  } else {
-    testTestCase(test, index);
-  }
+export function mapLikeOptionsToString(options) {
+  return [
+    "refuseDuplicates",
+    "createNewResult",
+    "replaceToEnd",
+    "validKey",
+    "validValue",
+    "validEntry",
+    "entries",
+  ].reduce(
+    (result, option) => {
+      if (options[option]) {
+        return {
+          result: result.result + (result.result ? "," : "") + `${option}`,
+        };
+      } else {
+        return result;
+      }
+    },
+    { result: "" }
+  ).result;
 }
 
 describe("class MutableMapLike", function () {
+  const originalLogLevel = getLogLevel();
+  setLogLevel("debug");
+  /**
+   * The function generating test cases.
+   * @param {import("../src/MapLike.mjs").MapLikeOptions<number,number>} options
+   * @returns {Partial<TestCase<number,number>>[]} The array of test the  test cases for
+   * template.
+   */
+  function generateTestCases(options = {}) {
+    const funcName = "generateTestCases";
+    const initialEntries = checkMapEntries([], {
+      ...options,
+      createNewResult: true,
+    });
+    console.debug(
+      `${funcName}: Initial entries: ${elementToString(initialEntries)}`
+    );
+    const equalKey = options.equalKey ?? SameValueZeroEquality;
+    // The current entries.
+    const setOptions = mapLikeOptionsToString(options);
+
+    let currentEntries = initialEntries;
+    return /** @type {Partial<TestCase<number,number>>[]} */ [
+      ...[
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        [0, 3, true],
+      ].map(([key, value, replacement = false]) => {
+        // Creating the initial entries of the options as copy (the rep used is never altered)
+        const testName = `set(${elementToString(key)}, ${elementToString(
+          value
+        )})${setOptions}`;
+        const testParam = [key, value];
+        const test = (tested, [key, value]) => {
+          tested.set(key, value);
+        };
+        const expectedException =
+          options.refuseDuplicates && replacement ? RangeError : undefined;
+        try {
+          const result = checkMapEntries([[key, value]], {
+            ...options,
+            entries: currentEntries,
+          });
+          currentEntries = result;
+          return {
+            name: testName,
+            param: testParam,
+            test,
+            expectedResult: result,
+            expectedException,
+          };
+        } catch (exception) {
+          // The operation fails.
+          return {
+            name: testName,
+            param: testParam,
+            test,
+            expectedException: exception,
+          };
+        }
+      }),
+      ...[4, 0, 0, 2].map((key) => {
+        if (currentEntries.find(([entryKey]) => equalKey(key, entryKey))) {
+          currentEntries = currentEntries.filter(
+            ([entryKey]) => !equalKey(key, entryKey)
+          );
+          return {
+            name: `existing delete(${elementToString(key)})`,
+            param: [key],
+            test: (tested, [key]) => tested.delete(key),
+            expectedResult: true,
+          };
+        } else {
+          return {
+            name: `absent delete(${elementToString(key)})`,
+            param: [key],
+            test: (tested, [key]) => tested.delete(key),
+            expectedResult: false,
+          };
+        }
+      }),
+    ];
+  }
+
   [
     {
       name: "Empty MutableMapLike<number,number>",
@@ -378,8 +517,10 @@ describe("class MutableMapLike", function () {
         {
           name: "Delete(1)",
           test(tested) {
-            let result; 
-            expect(() => {result = tested.delete(1)}).not.throw;
+            let result;
+            expect(() => {
+              result = tested.delete(1);
+            }).not.throw;
             expect(tested.has(1)).false;
             expect(tested.get(1)).undefined;
           },
@@ -387,13 +528,26 @@ describe("class MutableMapLike", function () {
         {
           name: "Clear()",
           test(tested) {
-            let result; 
-            expect(() => {result = tested.clear()}).not.throw;
+            let result;
+            expect(() => {
+              result = tested.clear();
+            }).not.throw;
             expect(tested.has(1)).false;
             expect(tested.entries()).empty;
           },
         },
+
+        ...generateTestCases({
+          createNewResult: true,
+          validKey: (value) => Number.isSafeInteger(value) && value >= 0,
+        }),
+        ...generateTestCases({
+          createNewResult: true,
+          refuseDuplicates: true,
+          validKey: (value) => Number.isSafeInteger(value) && value >= 0,
+        }),
       ],
     },
   ].forEach(testTestCaseTemplate);
+  setLogLevel(originalLogLevel);
 });
