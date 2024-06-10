@@ -6,8 +6,6 @@
 
 import { assert } from "chai";
 
-
-
 /**
  * The log level of the module.
  */
@@ -53,7 +51,7 @@ function isLogLevel(level) {
  * The registered loggers used for the module logging.
  * @type {Logger[]}
  */
-let loggers = [];
+var loggers = [];
 
 /**
  * Registers a logger into leggers.
@@ -70,7 +68,7 @@ export function registerLogger(logger) {
         logger[method].length === 1
     )
   ) {
-    this.loggers.push(logger);
+    loggers.push(logger);
     return () => {
       unregisterLogger(logger);
     };
@@ -84,17 +82,28 @@ export function registerLogger(logger) {
  * @param {Logger} logger The removed logger.
  */
 function unregisterLogger(logger) {
-  let index = this.loggers.indexOf(logger, 0);
+  let index = loggers.indexOf(logger, 0);
   if (index >= 0) {
-    let nextIndex = this.loggers.indexOf(logger, index);
+    let nextIndex = loggers.indexOf(logger, index);
     while (nextIndex >= 0) {
       index = nextIndex;
-      let nextIndex = this.loggers.indexOf(logger, index);
+      nextIndex = loggers.indexOf(logger, index);
     }
   }
   if (index >= 0) {
     loggers.splice(index, 1);
+    return true;
+  } else {
+    return false;
   }
+}
+
+/**
+ * Get the current log level.
+ * @returns {LOG_LEVEL} The current log level.
+ */
+export function getLogLevel() {
+    return logLevel;
 }
 
 /**
@@ -102,27 +111,32 @@ function unregisterLogger(logger) {
  * @param {LOG_LEVEL} newLevel
  */
 export function setLogLevel(newLevel) {
-  debugLevel = newDebugLevel;
+  logLevel = newLevel;
 }
 
 export function log(message, level = "info") {
   if (loggers.length && isLogLevel(level)) {
-    loggers.forEach( log => {log.log(message)});
+    loggers.forEach((log) => {
+      log.log(message);
+    });
   }
 }
 
 export function error(message, level = "error") {
   if (loggers.length && isLogLevel(level)) {
-    loggers.forEach( log => {log.error(message)});
+    loggers.forEach((log) => {
+      log.error(message);
+    });
   }
 }
 
 export function debug(message, level = "debug") {
   if (loggers.length && isLogLevel(level)) {
-    loggers.forEach( log => {log.debug(message)});
+    loggers.forEach((log) => {
+      log.debug(message);
+    });
   }
 }
-
 
 /**
  * The equality test.
@@ -254,6 +268,8 @@ export function debug(message, level = "debug") {
  */
 
 /**
+ * Alter the target array by removing the value at the index, and appending
+ * the new entry to th eend.
  * @template TYPE
  * @param {TYPE[]} target The target array.
  * @param {number} index The altered index.
@@ -268,6 +284,8 @@ export function deleteAndPush(target, index, newValue) {
 }
 
 /**
+ * Create a new array with the value at index filtered out, and the new value
+ * added to the end.
  * @template TYPE
  * @param {TYPE[]} source The source array.
  * @param {number} index The altered index.
@@ -283,6 +301,7 @@ export function filterAndAppend(source, index, newValue) {
 }
 
 /**
+ * Alter the target array by rreplacing the replacmeent with new value.
  * @template TYPE
  * @param {TYPE[]} target The target array.
  * @param {number} index The altered index.
@@ -296,6 +315,7 @@ export function replace(target, index, newValue) {
 }
 
 /**
+ * Create a new array without the value at the index, and new value in the end.
  * @template TYPE
  * @param {TYPE[]} source The target array.
  * @param {number} index The altered index.
@@ -308,6 +328,7 @@ export function replaceCreateNew(source, index, newValue) {
 }
 
 /**
+ * Alter the target array by adding the new value to the end.
  * @template TYPE
  * @param {TYPE[]} target The target array.
  * @param {number} index The altered index.
@@ -323,6 +344,7 @@ export function push(target, newValue) {
 }
 
 /**
+ * Create a new array with the entries of the source followed by the new value.
  * @template TYPE
  * @param {TYPE[]} source The target array.
  * @param {number} index The altered index.
@@ -334,6 +356,37 @@ export function append(source, newValue) {
   return [...source, newValue];
 }
 
+/**
+ * Remove the target entry at the index.
+ * @param {TYPE[]} target
+ * @param {number} index The index of the removed value.
+ * @returns {TYPE[]} The target array after modifications.
+ */
+export function remove(target, index) {
+  if (index >= 0 && index < target.length) {
+    target.splice(index, 1);
+  }
+  return target;
+}
+
+/**
+ * Create a new array with value at the index removed.
+ * @param {TYPE[]} source
+ * @param {number} index The index of the removed value.
+ * @returns {TYPE[]} The created array without the filtered value.
+ */
+export function filter(source, index) {
+  return source.filter((_, i) => i === index);
+}
+
+/**
+ * Convert a value into a human readable string without containing any
+ * sensible information such function code. Symbols are referred by their
+ * registered names, and functions by the function name. Object is represented
+ * by their prototype name or "POJO" for plain old JavaScript objects.
+ * @param {*} element The stringified element.
+ * @returns {string} The string representation of the element.
+ */
 export function elementToString(element) {
   switch (typeof element) {
     case "string":
@@ -350,7 +403,7 @@ export function elementToString(element) {
       } else if (Array.isArray(element)) {
         return `[${element.map(elementToString).join(",")}]`;
       } else {
-        return `Object of ${Object.getPrototypeOf(element)}`;
+        return `Object of ${Object.getPrototypeOf(element) ?? "POJO"}`;
       }
     default:
       return String(element);
@@ -365,9 +418,10 @@ export function elementToString(element) {
  * entries. Defaults to an empty iterator.
  * @param {MapLikeOptions<KEY,VALUE>} [options] THe options of the map-like.
  * @returns {[KEY,VALUE][]} The list of valid entries generated from the iterator.
- * @throws {SyntaxError} Any entry was invalid.
+ * @throws {SyntaxError} The iterable was not iterable, or any entry was not a valid
+ * KEY-VALUE-tuple.
  * @throws {RangeError} Any key was invalid.
- * @throws {TypeError} Any value was invalid.
+ * @throws {TypeError} Any itearble value was invalid.
  */
 export function checkMapEntries(
   iterable = /** @type {[KEY,VALUE]} */ [],
@@ -386,7 +440,7 @@ export function checkMapEntries(
     )
   ) {
     error("Iterable was not iterable");
-    throw new ReferenceError("Iterable not iterable!");
+    throw new SyntaxError("Iterable not iterable!");
   }
   /** @type {[KEY,VALUE][]} */
   let result =
@@ -426,7 +480,7 @@ export function checkMapEntries(
     }
     debug(`Entry #${index} has valid value ${String(addedValue)}`);
     const indexOf = result.findIndex(([entryKey, _entryValue]) =>
-      equalKey(entryKey, addedValue)
+      equalKey(entryKey, addedKey)
     );
     if (indexOf >= 0) {
       // Duplicate.
@@ -461,9 +515,7 @@ export function checkMapEntries(
       debug(`Result does not exist!`);
     }
     cursor = iterator.next();
-    debug(
-      `Acquired ${cursor.done ? "non-existing" : "existing"} next value`
-    );
+    debug(`Acquired ${cursor.done ? "non-existing" : "existing"} next value`);
     index++;
     debug(`Index incremented to ${index}`);
   }
@@ -527,6 +579,51 @@ export function LooseEquality(
 }
 
 /**
+ * Get the options of a read only map-like object.
+ * @template KEY The key type of the target.
+ * @template VALUE The value type of the target.
+ * @param {ReadOnlyMapLike<KEY,VALUE>} source The source ffrom which the options are read.
+ * @returns {MapLikeOptions<KEY,VALUE>} The initialization options of the read only map-like.
+ */
+function getReadOnlyOptions(source) {
+  return [
+    "equalKey",
+    "validValue",
+    "validKey",
+    "refuseDuplicates",
+    "createNewResult",
+    "replaceToEnd",
+  ].reduce((result, prop) => {
+    result[prop] = source[prop];
+    return result;
+  }, {});
+}
+
+/**
+ * Set the read only maplike properties from the options.
+ * @template KEY The key type of the target.
+ * @template VALUE The value type of the target.
+ * @param {ReadOnlyMapLike<KEY,VALUE>} target The altereted read only maplike, whose
+ * options state is initialized.
+ * @param {MapLikeOptions<KEY,vALUE>} options The new options.
+ */
+function setReadOnlyOptions(target, options = {}) {
+  [
+    "equalKey",
+    "validValue",
+    "validKey",
+    "refuseDuplicates",
+    "createNewResult",
+    "replaceToEnd",
+  ].forEach((prop) => {
+    /**
+     * @inheritdoc
+     */
+    target[prop] = options[prop];
+  });
+}
+
+/**
  * The basic implemetnation of a read only map-like.
  * @template KEY The type of the key.
  * @template VALUE THe type of the value.
@@ -539,7 +636,7 @@ export class BasicReadOnlyMapLike {
    * @template VALUE THe type of the value.
    * @param {Iterable<[KEY,VALUE>]} [iterable] The checked iterable of the checked map
    * entries. Defaults to an empty iterator.
-   * @param {MapLikeOptions<KEY,VALUE>} [options] THe options of the map-like.
+   * @param {Omit<MapLikeOptions<KEY,VALUE>, "entries">} [options] The options of the map-like.
    * @returns {[KEY,VALUE][]} The list of valid entries generated from the iterator.
    * @throws {SyntaxError} Any entry was invalid.
    * @throws {RangeError} Any key was invalid.
@@ -608,6 +705,7 @@ export class BasicReadOnlyMapLike {
    * @type {MapLikeOptions<KEY,VALUE>}
    */
   get options() {
+    return getReadOnlyOptions(this);
     return {
       equalKey: this.equalKey,
       validValue: this.validValue,
@@ -623,6 +721,11 @@ export class BasicReadOnlyMapLike {
    * @param {MapLikeOptions<KEY,VALUE>}
    */
   set options(options) {
+    /**
+     * @todo Add error, if called after initialization
+     */
+    setReadOnlyOptions(this, options);
+    return;
     this.equalKey = options.equalKey ?? this.defaultKeyEquality;
     this.validEntry = options.validEntry;
     this.validKey = options.validKey;
@@ -675,12 +778,27 @@ export class BasicReadOnlyMapLike {
 
   /**
    * Perform a consumer function for every entry.
-   * @param {(entry: [KEY,VALUE], index?: number)} consumerFn
+   * @param {(entry: [KEY,VALUE], index?: number)} consumerFn The function
+   * called for each entry.
    */
   forEach(consumerFn) {
     this.entries().forEach(consumerFn);
   }
 }
+
+function getAlteringOptions(source) {
+  return [].reduce((result, prop) => {
+    result[prop] = source[prop];
+    return result;
+  }, {});
+}
+
+/**
+ * Initialize the current map-like with altering MapLikeOptions.
+ * @param {MutableMapLike<KEY, VALUE>} target
+ * @param {MapLikeOptions<KEY,VALUE>} [options]
+ */
+function setAlteringOptions(target, options = {}) {}
 
 /**
  * The basic implemetnation of a mutable map-like.
@@ -700,9 +818,13 @@ export class BasicMutableMapLike {
    * @param {Iterable<[KEY,VALUE]>} [iterable] The initial entries of the map-like.
    */
   constructor(iterable = [], options = {}) {
+    // The setting of options performs the initialization of the storage.
     this.options = options;
     if (iterable) {
-      this.#entries = thic.checkMapEntries(iterable, options);
+      // Mutable version does not initialize the entries, but add the entries.
+      checkMapEntries(iterable, options).forEach(([key, value]) => {
+        this.set(key, value);
+      });
     }
   }
 
@@ -711,6 +833,8 @@ export class BasicMutableMapLike {
    * @type {MapLikeOptions<KEY,VALUE>}
    */
   get options() {
+    const result = { ...getReadOnlyOptions(this), ...getAlteringOptions(this) };
+    return result;
     return {
       equalKey: this.equalKey,
       validValue: this.validValue,
@@ -723,18 +847,40 @@ export class BasicMutableMapLike {
   }
 
   /**
+   * Set the options.
    * @param {MapLikeOptions<KEY,VALUE>}
    */
   set options(options) {
-    this.equalKey = options.equalKey ?? this.defaultKeyEquality;
-    this.validEntry = options.validEntry;
-    this.validKey = options.validKey;
-    this.validValue = options.validValue;
-    this.refuseDuplicates = options.refuseDuplicates;
-    this.createNewResult = options.createNewResult;
-    this.replaceToEnd = options.replaceToEnd;
+    /**
+     * @todo Add error, if called after initialization
+     */
+    setReadOnlyOptions(this, options);
+    setAlteringOptions(this, options);
+    // Setting the intial entries.
     if (options.entries) {
-      this.#entries = this.checkMapEntries(undefined, options);
+      this.#entries = checkMapEntries([], options);
+    } else {
+      this.#entries = [];
+    }
+  }
+
+  /**
+   * Check the entry.
+   * @param {[KEY,VALUE]} entry The tested entry.
+   * @returns {[KEY,VALUE]} The valid entry to add to the
+   * array of entries.
+   */
+  checkEntry(entry) {
+    if (this.validEntry(entry)) {
+      return [entry[0], entry[1]];
+    } else if (Array.isArray(entry) && entry.length === 2) {
+      if (this.validKey(entry[0])) {
+        throw new TypeError("Invalid entry value");
+      } else {
+        throw new RangeError("Invalid entry key");
+      }
+    } else {
+      throw new SyntaxError("Invalid map entry");
     }
   }
 
@@ -797,33 +943,36 @@ export class BasicMutableMapLike {
    * @returns {BasicMutableMapLike<KEY,VALUE>}
    */
   set(key, value) {
-    const [entryKey, entryValue] = this.checkEntry([key, value]);
+    const newEntry = this.checkEntry([key, value]);
+    const [entryKey, entryValue] = newEntry;
+    debug(
+      `The assignment of ${elementToString(entryKey)} to ${elementToString(
+        entryValue
+      )} is okay`
+    );
     const index = this.entries.findIndex(([currentKey]) =>
       this.equalKey(currentKey, entryKey)
     );
     if (index >= 0) {
+      debug(`Replacing existing entry at index ${index}`);
       if (this.createNewResult) {
         this.#entries = this.replaceToEnd
-          ? [
-              ...this.#entries.filter(
-                ([currentKey]) => !this.equalKey(currentKey, entryKey)
-              ),
-              [entryKey, entryValue],
-            ]
-          : [
-              ...this.#entries.slice(0, index),
-              [entryKey, entryValue],
-              ...this.#entries.slice(index + 1),
-            ];
+          ? filterAndAppend(this.#entries, index, newEntry)
+          : deleteAndPush(this.#entries, index, newEntry);
       } else {
-        this.#entries.splice(index, 1, [entryKey, entryValue]);
+        this.#entries = this.replaceToEnd
+          ? replace(this.#entries, index, newEntry)
+          : replaceCreateNew(this.#entries, index, newEntry);
       }
-    } else if (this.createNewResult) {
-      this.#entries = [...this.#entries, [entryKey, entryValue]];
     } else {
-      this.#entries.push([entryKey, entryValue]);
+      debug(`Adding new entry`);
+      if (this.createNewResult) {
+        this.#entries = push(this.#entries, newEntry);
+      } else {
+        this.#entries = append(this.#entries, newEntry);
+      }
     }
-    if (this.validKey(key)) return this;
+    return this;
   }
 
   clear() {
