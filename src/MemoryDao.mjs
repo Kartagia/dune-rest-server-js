@@ -6,7 +6,7 @@ import { BasicDao } from "./BasicDao.mjs";
  * The comparison of the equality.
  * @template TYPE The alue type of the identifier.
  * @callback Equality<ID>
- * @param {TYPE} comapred The compared value.
+ * @param {TYPE} compared The compared value.
  * @param {TYPE} comparee The value compared with.
  * @returns {boolean} True, if and only if the compared is equal to comparee.
  */
