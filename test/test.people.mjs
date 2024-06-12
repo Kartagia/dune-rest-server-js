@@ -130,6 +130,25 @@ describe("constant dummyPeople", function () {
         });
     });
 
+
+    describe("Update people", function() {
+        it("Updating non-existing", function() {
+            const name = "Taloudenhoitaja";
+            const id = "Taloudenhoitaja";
+            const updated = new People({name, id});
+            expect(dummyDao.update(id, updated)).eventually.false;
+        });
+        it(`Updating skills of Sirius`, function() {
+            const id = "Sirius";
+            expect(dummyDao.one(id).then( (current) => {
+                return {
+                    ...current,
+                    name: "Sirius II"
+                }
+            }).then( (newValue) => (dummyDao.update(id, newValue)))).eventually.true;
+        });
+    });
+
 });
 
 function testPeople(result, name, id=undefined, type=undefined) {
