@@ -25,6 +25,7 @@ Content-Type: application/json
 
 {
     "name": "Sirius",
+    "id": "Sirius",
     "player": "Carowfan",
     "type": "Major",
     "skills": {
