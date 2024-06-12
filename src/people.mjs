@@ -179,11 +179,7 @@ export class PeopleDao extends BasicDao {
  */
 let people = new Map();
 
-/**
- * The dummy memory based DAO.
- * @type {PeopleDao}
- */
-export const dummyDao = new PeopleDao({
+const dummyDaoProperties = {
     validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
         return newValue.id === undefined || oldValue.id === newValue.id;
     },
@@ -242,6 +238,12 @@ export const dummyDao = new PeopleDao({
         }
         );
     }
-})
+};
+
+/**
+ * The dummy memory based DAO.
+ * @type {PeopleDao}
+ */
+export const dummyDao = new PeopleDao(dummyDaoProperties)
 
 export default People; 
