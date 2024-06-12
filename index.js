@@ -183,8 +183,8 @@ app.post("/people", (req, res) => {
     console.log(`Created People with Id ${JSON.stringify(result)}`);
     res.json(result);
   }, (error) => {
-    console.log(`People "${id}" not found`);
-    res.sendStatus(404);
+    console.log(`Could not create new people: "${error}"`);
+    res.sendStatus(400);
   });
 });
 
