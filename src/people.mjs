@@ -4,6 +4,8 @@
  * The module containing the people data.
  */
 
+import { BasicDao } from "./BasicDao.mjs";
+
 /** 
  * @tempalte [ID=string] The identifier type.
  * @typedef {Object} NamedProps 
@@ -118,41 +120,29 @@ export class People {
 }
 
 /**
- * An interface for a data acess object.
- * @template [ID=string] The identifier type of the DAO.
- * @template TYPE The value type of the Dao.
- * @typedef {Object} Dao
- * @property {(id:ID)=>Promise<TYPE>} one Get one entry.
- * @property {()=>Promise<[ID,TYPE]>} all Get all entries.
- * @property {(id:ID)=>Promise<boolean>} remove Removing the entry from DAO.
- * @property {(id:ID, value:TYPE)=>Promise<boolean>} update Update an existing value.
- * @property {(value:TYPE)=>Promise<ID>} create Add a new entry to the dao.
- */
-
-/**
- * The properties to create a people DAO.
- * @typedef {Required<Pick<Dao<People>, "all">> & Partial<Omit<Dao<People>, "all">>} PeopleDaoProps
+ * The POJO properties of the People Dao.
+ * @typedef {import("./BasicDao.mjs").DaoProps<string, People>} PeopleDaoProps
  */
 
 /**
  * The DAO handling people.
- * @extends {Dao<People>}
+ * @extends {BasicDao<People>}
  */
-export class PeopleDao {
+export class PeopleDao extends BasicDao {
 
     /**
      * Create a dao using SQL querys.
      * @param {*} param0 
      * @returns {PeopleDao}
      */
-    static fromSql({ dbh, fetchAllQuery, peopleFromQueryResult, peoppleToQueryFields = undefined,
+    static fromSql({ dbh, fetchAllQuery, peopleFromQueryResult, peopleToQueryFields = undefined,
         fetchQuery = undefined, updateQuery = undefined, deleteQuery = undefined, insertQuery = undefined
     }) {
         return new PeopleDao({
             all() {
                 const rows = dbh.query(fetchAllQuery);
             },
-            one: fetchQuery ? function (id) {
+            one: fetchQuery ? (function (id) {
                 return this.all().then((entries) => {
                     const result = entries.find(([entryId]) => (id === entryId));
                     if (result) {
@@ -161,7 +151,7 @@ export class PeopleDao {
                         reject("No such people exists");
                     }
                 })
-            } : ((id) => {
+            }) : ((id) => {
                 return new Promise((resolve, reject) => {
                     try {
                         const dataSet = dbh.query(fetchQuery, [id]);
@@ -179,28 +169,7 @@ export class PeopleDao {
      * @param {PeopleDaoProps} params The parameters.
      */
     constructor(params) {
-        const { all, one = undefined, create = undefined, update = undefined, remove = undefined } = params;
-        this.all = all;
-        this.one = one ?? function (/** @type {string} */ id) {
-            return this.all().then((entries) => {
-                const result = entries.find(([entryId]) => (id === entryId));
-                if (result) {
-                    resolve(result[1]);
-                } else {
-                    reject("No such people exists");
-                }
-            });
-        };
-        this.create = create ?? function (/** @type {People} */ added) {
-            return Promise.reject("Unsupported operation");
-        };
-        this.update = update ?? function (/** @type {string} */ id, /** @type {People} */ value) {
-            return Promise.reject("Unsupported operation");
-        };
-
-        this.remove = remove ?? function (/** @type {string} */id) {
-            return Promise.reject("Unsupported operation");
-        };
+        super(params);
     }
 
 }
@@ -210,11 +179,7 @@ export class PeopleDao {
  */
 let people = new Map();
 
-/**
- * The dummy memory based DAO.
- * @type {PeopleDao}
- */
-export const dummyDao = new PeopleDao({
+const dummyDaoProperties = {
     validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
         return newValue.id === undefined || oldValue.id === newValue.id;
     },
@@ -259,7 +224,7 @@ export const dummyDao = new PeopleDao({
             try {
                 const added = new People(value);
                 if (people.has(added.id)) {
-                    throw new RangeError("The identifier already reserverd");
+                    throw new RangeError("The identifier already reserved");
                 } else {
                     people.set(added.id, added);
                     resolve(added.id);
@@ -273,6 +238,12 @@ export const dummyDao = new PeopleDao({
         }
         );
     }
-})
+};
+
+/**
+ * The dummy memory based DAO.
+ * @type {PeopleDao}
+ */
+export const dummyDao = new PeopleDao(dummyDaoProperties)
 
 export default People; 
