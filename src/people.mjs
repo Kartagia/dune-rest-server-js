@@ -202,7 +202,7 @@ export const dummyDao = new PeopleDao({
             try {
                 const newValue = new People(value);
                 const entry = people.get(id);
-                if (entry && this.validReplacement(entry, newValue)) {
+                if (entry && dummyDao.validReplacement(entry, newValue)) {
                     if (!newValue.id) {
                         newValue.id = entry.id;
                     }
