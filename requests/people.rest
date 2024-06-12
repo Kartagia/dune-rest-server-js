@@ -1,0 +1,43 @@
+GET http://localhost:3000/people
+
+
+###
+
+POST http://localhost:3000/people
+Content-Type: application/json
+
+{
+    "name": "Sirius",
+    "player": "Carowfan",
+    "type": "Major",
+    "skills": {
+        "Battle":{ "name": "Battle", "id": "Battle", "minValue": 4, "maxValue": 8, "current": 4 },
+        "Communication": { "name": "Communication", "id": "Communication", "minValue": 4, "maxValue": 8, "current": 4 },
+        "Discipline": { "name": "Discipline", "id": "Discipline", "minValue": 4, "maxValue": 8, "current": 4 },
+        "Move": { "name": "Move", "id": "Move", "minValue": 4, "maxValue": 8, "current": 4 },
+        "Understand":{ "name": "Understand", "id": "Understand", "minValue": 4, "maxValue": 8, "current": 6 }
+    }
+}
+
+###
+PUT http://localhost:3000/people/Sirius
+Content-Type: application/json
+
+{
+    "name": "Sirius",
+    "player": "Carowfan",
+    "type": "Major",
+    "skills": {
+        "Battle":{ "name": "Battle", "id": "Battle", "minValue": 4, "maxValue": 8, "current": 4 },
+        "Communication": { "name": "Communication", "id": "Communication", "minValue": 4, "maxValue": 8, "current": 4 },
+        "Discipline": { "name": "Discipline", "id": "Discipline", "minValue": 4, "maxValue": 8, "current": 4 },
+        "Move": { "name": "Move", "id": "Move", "minValue": 4, "maxValue": 8, "current": 6 },
+        "Understand":{ "name": "Understand", "id": "Understand", "minValue": 4, "maxValue": 8, "current": 4 }
+    }
+
+}
+
+###
+
+DELETE http://localhost:3000/people/Sirius
+
