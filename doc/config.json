@@ -1,0 +1,13 @@
+{
+    "plugins": [ "plugins/markdown"],
+    "source": {
+        "include": ["./src", "index.js"],
+        "includePattern": ".+\\.[cj]?js(doc|x)?$",
+        "excludePattern": "(^|\\/|\\\\)_"
+    },
+    "opts": {
+        "encoding": "utf8",
+        "destination": "./doc/output/",
+        "recurse": true
+    }
+}
