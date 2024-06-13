@@ -1,0 +1,138 @@
+
+#
+# OpenAPI specification for the DuneRest Server API
+#
+
+openapi: 3.1.0
+servers:
+  - url: http://localhost:3000
+    description: Development server
+info:
+  title: Dune REST API
+  description: >
+    Dune REST API for storing Dune: Adventures in the Imperium character and campaign data.
+  version: 0.0.1
+  contact:
+    name: "Antti Kautiainen"
+    email: antti@kautiainen.com
+    url: antti.kautiainen.com/apis/DuneRest
+  license:
+    identifier: MIT
+    name: MIT
+components:
+  schemas:
+    # The identifier value.
+    id:
+      $ref: "./shared.yaml#/components/schemas/id" 
+    statValue:
+      $ref: "./shared.yaml#/components/schemas/statValue" 
+    Text:
+      $ref: "./shared.yaml#/components/schemas/Text"
+    SkillRef:
+      type: object
+      properties:
+        name: 
+          schema:
+            $ref: "#/components/schemas/id"
+        value:
+          schema:
+            $ref: "#/components/schemas/statValue"
+
+    Person:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the character.
+        id:
+          type: string
+          description: The identifier of the character.
+        skills:
+          type: array
+          items:
+            # The skill references containing the skill of the person.
+            schema:
+              $ref: "#/components/schemas/SkillRef"
+  parameters:
+    idParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        $fef: "#/components/schemas/id"
+paths:
+  # The characters of the game.
+  /people:
+    get:
+      operationId: get-characters
+      tags:
+        - Characters
+        - Identifiers
+        - Dune RPG
+      summary: Get all characters
+      description: Retrieves the current state of the characters.
+      responses:
+        "200":
+          description: Everything wents fine.
+          content:
+            application/json:
+              schema:
+                type: array
+                minItems: 0
+                items:
+                  type: object
+                  properties:
+  /people/{id}:
+    parameters:
+      - $ref: "#/components/parameters/idParam"
+    get:
+      operationId: get-character
+      tags:
+        - Characters
+        - Dune RPG
+      summary: Get one existing character.
+      description: Retrieves one character from the current character pool.
+      responses:
+        "200":
+          description: All went fine.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+  # The skill descriptions.
+    # The drive descriptions.
+#  /drives:
+  # The trait descriptions.
+#  /traits:
+  # The asset descriptions.
+#  /assets:
+  # The talent descriptions.
+#  /talents:
+#components:
+tags:
+  - name: Dune RPG
+    description: >
+      Operation has something to do with Modiphius LLC RPG Dune: Adventures in the Impoerium.
+    externalDocs: 
+      url: "https://modiphius.net/pages/discover-dune-roleplaying-game"
+  - name: Characters
+    description: Operation targets characters.
+  - name: Skills
+    description: Operation targets skills.
+  - name: Drives
+    description: Operation targets drives.
+  - name: Talents
+    description: Operation targets talents.
+  - name: Traits
+    description: Operation targets traits.
+  - name: assets
+    description: Operation targets assets. 
+  - name: Update
+    description: Operation updates one or more resource values.
+  - name: Remove
+    description: Operation removes one or more resource values.
+  - name: Create New
+    description: Operation creates one or more resource values.
+  - name: Get
+  - name: Identifiers
+    description: The operation acquires identifiers.

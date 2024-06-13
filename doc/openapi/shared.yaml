@@ -1,0 +1,18 @@
+
+#
+# Shared content between schemas.
+#
+
+components:
+  schemas:
+    id:
+      type: string
+    name:
+      type: string
+    statValue:
+      type: integer
+      minimum: 4
+      maximum: 8
+    Text:
+      type: string
+  

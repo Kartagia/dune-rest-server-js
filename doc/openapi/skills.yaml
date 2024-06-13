@@ -1,0 +1,95 @@
+#
+# OpenAPI components for skills.
+#
+
+components:
+  schemas:
+    # The identifier value.
+    name:
+      $ref: "./shared.yaml#/components/schemas/name"
+    id: 
+      $ref: "./shared.yaml#/components/schemas/id"
+    statValue:
+      $ref: "./shared.yaml#/components/schemas/statValue"
+    Text:
+      $ref: "./shared.yaml#/components/schemas/Text"
+      focus:
+      type: object
+      properties:
+        name: 
+         schema:
+           $ref: "#/components/schemas/name"
+        description:
+          schema:
+           $ref: "#/components/schemas/Text"
+    focusRef:
+      type: string
+    Skill:
+      type: object
+      properties:
+        name:
+          description: The name of the skill.
+          schema:
+            $ref: "#/components/schemas/name"
+        id:
+          description: The identifier of the skill.
+          schema:
+            $ref: "#/components/schemas/id"
+        description:
+          description: The description of the skill.
+          schema:
+            $ref: "#/components/schemas/Text"
+        focusExamples:
+          type: array
+          minItems: 0
+          items:
+            schema:
+              $ref: "#/components/schemas/focusRef"
+    skillRef:
+      type: object
+      properties:
+        id:
+          description: The identifier of the skill.
+          schema:
+            $ref: "#/contents/schemas/id"
+        current:
+          description: The current valeu of the skill.
+          schema:
+            $ref: "#/contents/schemas/statValue"
+        minLevel:
+          description: The minimal level of the skill.
+          schema:
+            $ref: "#/contents/schemas/statValue"
+        maxLevel:
+          description: The maximal level of the skill.
+          schema:
+            $ref: "#/contents/schemas/statValue"
+    SkillEntries:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            schema:
+              $ref: "#/components/schemas/id"
+          skill:
+            schema:
+              $ref: "#/components/schemas/Skill"
+paths:
+  /skills:
+    get:
+      operationId: get-skills
+      tags:
+        - Skills
+        - Identifiers
+        - Dune RPG
+      summary: Get all skills.
+      description: >
+        Retrieves the list of skill entries.
+      responses:
+        "200":
+          description: All went well.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillEntries"
