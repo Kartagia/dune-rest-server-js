@@ -15,4 +15,35 @@ components:
       maximum: 8
     Text:
       type: string
-  
+    ErrorModel:
+      type: object
+      properties:
+        message: string
+tags:
+  - name: Dune RPG
+    description: >
+      Operation has something to do with Modiphius LLC RPG Dune: Adventures in the Impoerium.
+    externalDocs: 
+      url: "https://modiphius.net/pages/discover-dune-roleplaying-game"
+  - name: Characters
+    description: Operation targets characters.
+  - name: Skills
+    description: Operation targets skills.
+  - name: Drives
+    description: Operation targets drives.
+  - name: Talents
+    description: Operation targets talents.
+  - name: Traits
+    description: Operation targets traits.
+  - name: assets
+    description: Operation targets assets. 
+  - name: Update
+    description: Operation updates one or more resource values.
+  - name: Remove
+    description: Operation removes one or more resource values.
+  - name: Create New
+    description: Operation creates one or more resource values.
+  - name: Get
+  - name: Identifiers
+    description: The operation acquires identifiers.
+    

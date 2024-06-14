@@ -1,0 +1,149 @@
+
+#
+# OpenAPI specification of the skills API.
+#
+
+openapi: 3.1.0
+servers:
+  - url: http://localhost:3000
+    description: Development server
+info:
+  title: Dune REST Skills API
+  description: >
+    Dune REST API for storing Dune: Adventures in the Imperium skill information.
+  version: 0.0.1
+  contact:
+    name: "Antti Kautiainen"
+    email: antti@kautiainen.com
+    url: antti.kautiainen.com/apis/DuneRest
+  license:
+    identifier: MIT
+    name: MIT
+components:
+  schemas:
+    # The identifier value.
+    name:
+      $ref: "../skills.yaml#/components/schemas/name"
+    id: 
+      $ref: "../skills.yaml#/components/schemas/id"
+    statValue:
+      $ref: "../skills.yaml#/components/schemas/statValue"
+    Text:
+      $ref: "../skills.yaml#/components/schemas/Text"
+    Focus:
+      $ref: "../skills.yaml#/components/schemas/Focus"
+    focusRef:
+        $ref: "../skills.yaml#/components/schemas/focusRef"
+    Skill:
+      $ref: "../skills.yaml#/components/schemas/Skill"
+    NewSkill:
+      $ref: "../skills.yaml#/components/schemas/NewSkill"
+    SkilRef:
+      $ref: "../skills.yaml#/components/schemas/SkillRef"
+    SkillEntries:
+      $ref: "../skills.yaml#/components/schemas/SkillEntries"
+    ErrorModel:
+      $ref: "../shared.yaml#/components/schemas/ErrorModel"
+paths:
+  /skills:
+    get:
+      operationId: get-skills
+      tags:
+        - Skills
+        - Identifiers
+        - Dune RPG
+      summary: Get all skills.
+      description: >
+        Retrieves the list of skill entries.
+      responses:
+        "200":
+          description: All went well.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillEntries"
+  /skills/{id}:
+    parameters:
+      - name: id
+        description: The identifier of the skill.
+        in: path  
+        required: true
+        schema:
+          $ref: "#/components/schemas/id"
+    get:
+      operationId: get-skill
+      tags:
+        - Skills
+        - Get
+        - Dune RPG
+      summary: Get single skill.
+      description: >
+        Retrieves a single skill description. 
+      responses:
+        "200":
+          description: The skill exists and is returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Skill"
+        "404":
+          description: Skill not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+    post:
+      operationId: create-skill
+      tags:
+        - Skills
+        - Dune RPG
+        - Create New
+      description: Add a new Skill to the skills collection.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewSkill"
+      responses:
+        "201":
+          description: Skill created.
+        "500":
+          description: Skill creation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+    put:
+      summary: Update an exsting skill.
+      description: >
+        Updates an existing skill.
+      operationId: update-skill
+      tags:
+        - Skills
+        - Update
+      responses:
+        "200":
+          description: Skill was updated.
+          content:
+            application/json:
+              schema:
+                type: boolean
+        "404":
+          description: Skill does not exist.
+        "400":
+          description: SKill was invalid.  
+
+    delete:
+      operationId: delete-skill
+      summary: Deletes an existing skill.
+      description: An existing skill with given identifier is removed from the collection.
+      tags:
+      - Skills
+      - Remove
+      - Dune RPG
+      responses:
+        "204":
+          description: Skill was removed.
+tags: 
+  $ref: "../shared.yaml#/tags"
