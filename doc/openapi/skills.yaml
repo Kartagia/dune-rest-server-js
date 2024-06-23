@@ -70,8 +70,16 @@ components:
           description: The identifier of the skill.
           schema:
             $ref: "#/components/schemas/id"
+    SkillValueRef:
+      type: object
+      properties:
+        id:
+          description: The identifier of the skill.
+          schema:
+            $ref: "#/components/schemas/id"
         current:
-          description: The current valeu of the skill.
+          summary: The current value of the skill.
+          description: The current value of the skill.
           schema:
             $ref: "#/components/schemas/statValue"
         minLevel:

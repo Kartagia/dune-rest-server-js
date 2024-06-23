@@ -19,6 +19,7 @@ components:
       type: object
       properties:
         message: string
+        source: string
 tags:
   - name: Dune RPG
     description: >
@@ -35,15 +36,20 @@ tags:
     description: Operation targets talents.
   - name: Traits
     description: Operation targets traits.
-  - name: assets
+  - name: Assets
     description: Operation targets assets. 
   - name: Update
     description: Operation updates one or more resource values.
+  - name: Alter
+    description: Operation alters properties of one or more resource values.
   - name: Remove
     description: Operation removes one or more resource values.
   - name: Create New
     description: Operation creates one or more resource values.
-  - name: Get
+  - name: Get All
+    description: Get all resource instances. 
+  - name: Get One
+    description: Get one resource instance.
   - name: Identifiers
     description: The operation acquires identifiers.
     

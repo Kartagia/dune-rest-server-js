@@ -1,0 +1,92 @@
+
+#
+# OpenAPI Yaml defintion for Person.
+#
+components:
+  schemas:
+    # The identifier value.
+    id:
+      $ref: "./shared.yaml#/components/schemas/id" 
+    statValue:
+      $ref: "./shared.yaml#/components/schemas/statValue" 
+    Text:
+      $ref: "./shared.yaml#/components/schemas/Text"
+    SkillRef:
+      type: object
+      properties:
+        name: 
+          schema:
+            $ref: "#/components/schemas/id"
+        value:
+          schema:
+            $ref: "#/components/schemas/statValue"
+    Person:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The name of the character.
+        description:
+          schema:
+            $ref: "#/components/schemas/Text"
+        id:
+          type: string
+          summary: The reference identifier of the person.
+          description: >
+            The XML id compliant unique identifier of the person.
+            The identifier ends with "person:" followed by the slugified
+            person name.
+        skills:
+          type: array
+          description: The abilities of the person.
+          items:
+            # The skill references containing the skill of the person.
+            schema:
+              $ref: "#/components/schemas/SkillRef"      
+paths:
+  # The characters of the game.
+  /people:
+    get:
+      operationId: get-characters
+      tags:
+        - Characters
+        - Identifiers
+        - Dune RPG
+      summary: Get all characters
+      description: Retrieves the current state of the characters.
+      responses:
+        "200":
+          description: Everything wents fine.
+          content:
+            application/json:
+              schema:
+                type: array
+                minItems: 0
+                items:
+                  schema:
+                    $ref: "#/components/schemas/Person"
+  /people/{id}:
+    parameters:
+      - name: id
+        description: The identifier of the character.
+        in: path  
+        required: true
+        schema:
+          $ref: "#/components/schemas/id"
+    get:
+      operationId: get-character
+      tags:
+        - Characters
+        - Dune RPG
+        - Get One
+      summary: Get one existing character.
+      description: Retrieves one character from the current character pool.
+      responses:
+        "200":
+          description: All went fine.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+tags:
+  $ref: "./shared.yaml#/tags"

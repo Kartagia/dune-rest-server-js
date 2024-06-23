@@ -22,24 +22,12 @@ info:
 components:
   schemas:
     # The identifier value.
-    name:
-      $ref: "../skills.yaml#/components/schemas/name"
     id: 
       $ref: "../skills.yaml#/components/schemas/id"
-    statValue:
-      $ref: "../skills.yaml#/components/schemas/statValue"
-    Text:
-      $ref: "../skills.yaml#/components/schemas/Text"
-    Focus:
-      $ref: "../skills.yaml#/components/schemas/Focus"
-    focusRef:
-        $ref: "../skills.yaml#/components/schemas/focusRef"
     Skill:
       $ref: "../skills.yaml#/components/schemas/Skill"
     NewSkill:
       $ref: "../skills.yaml#/components/schemas/NewSkill"
-    SkilRef:
-      $ref: "../skills.yaml#/components/schemas/SkillRef"
     SkillEntries:
       $ref: "../skills.yaml#/components/schemas/SkillEntries"
     ErrorModel:
@@ -52,6 +40,7 @@ paths:
         - Skills
         - Identifiers
         - Dune RPG
+        - Get All
       summary: Get all skills.
       description: >
         Retrieves the list of skill entries.
@@ -74,7 +63,7 @@ paths:
       operationId: get-skill
       tags:
         - Skills
-        - Get
+        - Get One
         - Dune RPG
       summary: Get single skill.
       description: >
@@ -132,7 +121,34 @@ paths:
         "404":
           description: Skill does not exist.
         "400":
-          description: SKill was invalid.  
+          description: Skill was invalid.  
+          content:
+            applicaton/json:
+              schema: 
+                ref: "#/components/schemas/ErrorModel"
+    patch:
+      summary: Update properties of an exsting skill.
+      description: >
+        Updates some properties of an existing skill.
+      operationId: alter-skill
+      tags:
+        - Skills
+        - Alter
+      responses:
+        "200":
+          description: Skill was altered.
+          content:
+            application/json:
+              schema:
+                type: boolean
+        "404":
+          description: Skill does not exist.
+        "400":
+          description: Some of the new properties was invalid
+          content:
+            applicaton/json:
+              schema: 
+                ref: "#/components/schemas/ErrorModel"  
 
     delete:
       operationId: delete-skill
