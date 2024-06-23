@@ -11,7 +11,7 @@ components:
       $ref: "./shared.yaml#/components/schemas/statValue" 
     Text:
       $ref: "./shared.yaml#/components/schemas/Text"
-    SkillRef:
+    SkillValueRef:
       type: object
       properties:
         name: 
@@ -42,7 +42,7 @@ components:
           items:
             # The skill references containing the skill of the person.
             schema:
-              $ref: "#/components/schemas/SkillRef"      
+              $ref: "#/components/schemas/SkillValueRef"      
 paths:
   # The characters of the game.
   /people:
