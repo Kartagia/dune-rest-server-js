@@ -218,7 +218,7 @@ paths:
         "404":
           description: Skill does not exist.
         "400":
-          description: Some of the new properties was invalid
+          description: Some of the new properties were invalid
           content:
             applicaton/json:
               schema: 
@@ -234,5 +234,7 @@ paths:
       - Dune RPG
       responses:
         "204":
-          description: Skill was removed.
+          description: The skill was removed.
+        "404":
+          description: The skill does not exist.
 
