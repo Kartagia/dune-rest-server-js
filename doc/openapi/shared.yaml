@@ -20,6 +20,16 @@ components:
       properties:
         message: string
         source: string
+        code: 
+          type: integer
+          format: int32
+          minimum: 100
+          maximum: 600
+          defualt: 400
+      required:
+      - message
+      - code
+
 tags:
   - name: Dune RPG
     description: >

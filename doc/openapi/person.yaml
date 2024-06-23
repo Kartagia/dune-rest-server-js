@@ -20,7 +20,7 @@ components:
         value:
           schema:
             $ref: "#/components/schemas/statValue"
-    Person:
+    NewPerson:
       type: object
       properties:
         name:
@@ -29,13 +29,6 @@ components:
         description:
           schema:
             $ref: "#/components/schemas/Text"
-        id:
-          type: string
-          summary: The reference identifier of the person.
-          description: >
-            The XML id compliant unique identifier of the person.
-            The identifier ends with "person:" followed by the slugified
-            person name.
         skills:
           type: array
           description: The abilities of the person.
@@ -43,6 +36,22 @@ components:
             # The skill references containing the skill of the person.
             schema:
               $ref: "#/components/schemas/SkillValueRef"      
+    Person:
+      allOf: 
+      - $ref: "#/components/schemas/NewPerson"
+      - type: object
+        properties:
+          id:
+            type: string
+            summary: The reference identifier of the person.
+            description: >
+              The XML id compliant unique identifier of the person.
+              The identifier ends with "person:" followed by the slugified
+              person name.
+      required:
+      - name
+      - id
+      - skills
 paths:
   # The characters of the game.
   /people:

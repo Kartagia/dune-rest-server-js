@@ -22,6 +22,8 @@ components:
         description:
           schema:
            $ref: "#/components/schemas/Text"
+      required:
+      - name
     focusRef:
       type: string
     Skill:
@@ -45,6 +47,9 @@ components:
           items:
             schema:
               $ref: "#/components/schemas/focusRef"
+      required:
+      - name
+      - id
     NewSkill:
       type: object
       description: The model for a new skill. The new skills does not have identifier.
@@ -63,6 +68,9 @@ components:
           items:
             schema:
               $ref: "#/components/schemas/focusRef"
+      required:
+      - name
+
     SkillRef:
       type: object
       properties:
@@ -70,6 +78,8 @@ components:
           description: The identifier of the skill.
           schema:
             $ref: "#/components/schemas/id"
+      required:
+      - id
     SkillValueRef:
       type: object
       properties:
@@ -90,6 +100,8 @@ components:
           description: The maximal level of the skill.
           schema:
             $ref: "#/components/schemas/statValue"
+      required:
+      - id
     SkillEntries:
       type: array
       items:
@@ -101,6 +113,9 @@ components:
           skill:
             schema:
               $ref: "#/components/schemas/Skill"
+        required:
+        - name
+        - skill
 
     ErrorModel:
       $ref: "./shared.yaml#/components/schemas/ErrorModel"
