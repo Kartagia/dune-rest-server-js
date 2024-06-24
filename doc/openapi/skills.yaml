@@ -26,6 +26,27 @@ components:
       - name
     focusRef:
       type: string
+    SkillChanges:
+      type: object
+      properties:
+        name:
+          description: The name of the skill.
+          schema:
+            $ref: "#/components/schemas/name"
+        id:
+          description: The identifier of the skill.
+          schema:
+            $ref: "#/components/schemas/id"
+        description:
+          description: The description of the skill.
+          schema:
+            $ref: "#/components/schemas/Text"
+        focusExamples:
+          type: array
+          minItems: 0
+          items:
+            schema:
+              $ref: "#/components/schemas/focusRef"
     Skill:
       type: object
       properties:
@@ -156,7 +177,7 @@ paths:
         - Dune RPG
       summary: Get single skill.
       description: >
-        Retrieves a single skill description. 
+        Retrieves a single skill description.
       responses:
         "200":
           description: The skill exists and is returned.
@@ -223,6 +244,12 @@ paths:
       tags:
         - Skills
         - Alter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SkillChanges"
       responses:
         "200":
           description: Skill was altered.
