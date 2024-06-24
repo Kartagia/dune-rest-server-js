@@ -97,25 +97,30 @@ export function orElse(
  */
 
 /**
- * The options of the resource.
+ * The options of the resource access.
  *
  * @template [ID=string] The identifier type of the dao.
  * @template TYPE The type of the resource.
- * @typedef {Object} ResourceOptions
- * @property {IdFunction<ID,TYPE>} [getId] The function generating identifier for a created
- * value.
+ * @typedef {Object} ResourceAccessOptions
  * @property {boolean} [canPut] Does the resource allow update.
  * @property {boolean} [canPost] Does the resource allow creation of the identifier.
- * Defaults to the existence of the function to generate id for the new value.
  * @property {boolean} [canDelete] Does the resource allow removal of the resource.
  * @property {boolean} [canPatch] Does the resource allow patching an existing value.
+ * @property {boolean} [canGetAll=true] Does the resource allow getting all id-value pairs.
+ * @property {boolean} [canGetOne=true] Does teh resource allow getting resource value of
+ * an identifier.
  */
 
 /**
  * The options for RestResource
  * @template [ID=string] The identifier type of the DAO.
  * @template TYPE The type of hte resource value.
- * @typedef {Object} RestResourceOptions
+ * @typedef {ResourceDaoMappingOptions<ID,TYPE> & ResourceAccessOptions<ID, TYPE>} RestResourceOptions
+ */
+/**
+ * @template [ID=string] The identifier type of the resource content.
+ * @template TYPE The resource value type.
+ * @typedef {Object} ResourceDaoMappingOptions
  * @property {Stringifier<ID, RangeError>} [formatId] The function converting the Resource identifier into
  * string identifier of the REST. The result requires URL encoding if used in URL.
  * @property {Parser<ID, RangeError>} parseId The function converting urldecoded Rest identifier into the
@@ -528,6 +533,32 @@ export class RestResource extends BasicDao {
    */
   get options() {
     return {
+      ...this.accessOptions,
+      ...this.mappingOptions,
+    };
+  }
+
+  /**
+   * The access options.
+   * @type {Readonly<ResourceAccessOptions<ID, TYPE>>}
+   */
+  get accessOptions() {
+    return {
+      canDelete: this.canDelete,
+      canGetAll: this.canGetAll,
+      canGetOne: this.canGetOne,
+      canPatch: this.canAlter,
+      canPut: this.canUpdate,
+      canPost: this.canCreate,
+    };
+  }
+
+  /**
+   * The mapping options.
+   * @type {Readonly<ResourceDaoMappingOptions<ID, TYPE>>}
+   */
+  get mappingOptions() {
+    return {
       formatId: this.idFormatter,
       valueFormatter: this.#formatValue,
       formatData: this.#formatData,
@@ -539,6 +570,60 @@ export class RestResource extends BasicDao {
   }
 
   /**
+   * The access records.
+   * @type {Record<string, boolean>}
+   */
+  #access = {};
+
+  /**
+   * Does the resource support replacing an existing resource value.
+   * @type {boolean}
+   */
+  get canUpdate() {
+    return this.#access.update ?? false;
+  }
+
+  /**
+   * Does teh resource support removal of an existing resource value.
+   * @type {boolean}
+   */
+  get canDelete() {
+    return this.#access.delete ?? false;
+  }
+
+  /**
+   * Does the resource support altering properties of an existing resource value.
+   * @type {boolean}
+   */
+  get canAlter() {
+    return this.#access.alter ?? false;
+  }
+
+  /**
+   * Does the resource support getting all identifier-value pairs.
+   * @type {boolean}
+   */
+  get canGetAll() {
+    return this.#access.getAll ?? true;
+  }
+
+  /**
+   * Does the resource support getting the value associated to an identifier.
+   * @type {boolean}
+   */
+  get canGetOne() {
+    return this.#access.getOne ?? true;
+  }
+
+  /**
+   * Does the resource support adding new values.
+   * @type {boolean}
+   */
+  get canCreate() {
+    return this.#access.create ?? false;
+  }
+
+  /**
    * Create a new REST resource.
    * @param {Dao<ID,TYPE>} dao The DAO performing actual storage of the resources.
    * @param {Readonly<RestResourceOptions<ID,TYPE>>} [options] The resource options.
@@ -546,11 +631,7 @@ export class RestResource extends BasicDao {
   constructor(dao, options = {}) {
     super();
     this.idFormatter = this.checkIdFormatter(options.formatId);
-    this.#parseData = andThen(
-      options.formatValue,
-      undefined,
-      options.parseData
-    );
+    this.#parseData = andThen(options.formatValue, options.parseData);
     this.#formatData = options.formatData;
     this.#formatValue = orElse(
       options.formatValue,
@@ -559,6 +640,34 @@ export class RestResource extends BasicDao {
     this.idParser = this.checkIdParser(options.idParser);
     this.valueParser = this.checkValueParser(options.valueParser);
     this.#dao = dao;
+
+    /**
+     * Building access lists.
+     * - The access requires the value conversion functions are present.
+     */
+    this.#access = {
+      create:
+        options.canPost &&
+        this.valueParser !== undefined &&
+        this.idFormatter !== undefined,
+      update:
+        options.canPut &&
+        this.idParser !== undefined &&
+        this.valueParser !== undefined,
+      alter:
+        options.canPatch &&
+        this.idParser !== undefined &&
+        this.valueParser !== undefined,
+      delete: options.canDelete && this.idParser !== undefined,
+      getOne:
+        options.canGetOne &&
+        this.idParser !== undefined &&
+        this.valueFormatter !== undefined,
+      getAll:
+        options.canGetAll &&
+        this.idFormatter !== undefined &&
+        this.valueFormatter !== undefined,
+    };
   }
 
   /**
@@ -678,14 +787,19 @@ export class RestResource extends BasicDao {
    */
   all() {
     return new Promise(async (resolve, reject) => {
+      if (!this.canGetAll) {
+        return /** @type {Promise<[string, RestData][]>} */ Promise.reject("Operation not supported", 501);
+      }
       this.#dao
         .all()
         .then((entries) =>
-          entries.map(async ([ /** @type {ID} */ id, /** @type {TYPE} */ value]) => {
-            const restId = await this.formatId(id);
-            const restData = await this.formatValue(value, id);
-            return [restId, restData];
-          })
+          entries.map(
+            async ([/** @type {ID} */ id, /** @type {TYPE} */ value]) => {
+              const restId = await this.formatId(id);
+              const restData = await this.formatValue(value, id);
+              return [restId, restData];
+            }
+          )
         )
         .then(resolve, reject);
     });
@@ -695,6 +809,16 @@ export class RestResource extends BasicDao {
    * @inheritdoc
    */
   one(id) {
+
+    if (!this.canGetOne) {
+      /**
+       * @type {Promise<RestData>}
+       */
+      const result = /** @type {Promise<RestData>}*/ Promise.reject(new ErrorModel("Operation not supported", 501));
+      return result;
+    }
+
+
     /**
      * @type {Promise<RestData>}
      */
@@ -731,77 +855,107 @@ export class RestResource extends BasicDao {
    * @inheritdoc
    */
   create(value) {
-    return new Promise((/** @type {(value: string|PromiseLike<string>}=>any)} */resolve, reject) => {
-      this.parseValue(value)
-        .then(
-          (resourceValue) =>
-            this.#dao.create(resourceValue).then(
-              (daoId) => {
-                return this.formatId(daoId);
-              },
-              (error) => {
-                // The createion of the resource failed.
-                // TODO: Alter the error code to proper 507 (Insufficient storage) on API doc.
-                throw new ErrorModel(
-                  "Could not create new resource",
-                  500,
-                  "id"
-                );
-              }
-            ),
-          (error) => {
-            // The value was invalid.
-            throw new ErrorModel(
-              `Invalid new value - ${error}`,
-              500,
-              "request.body"
-            );
-          }
-        )
-        .then(resolve, reject);
-    });
+    return new Promise(
+      (
+        /** @type {(value: string|PromiseLike<string>}=>any)} */ resolve,
+        reject
+      ) => {
+        if (!this.canCreate) {
+          reject(new ErrorModel("Operation not supported", 501));
+        }
+        this.parseValue(value)
+          .then(
+            (resourceValue) =>
+              this.#dao.create(resourceValue).then(
+                (daoId) => {
+                  return this.formatId(daoId);
+                },
+                (error) => {
+                  // The createion of the resource failed.
+                  // TODO: Alter the error code to proper 507 (Insufficient storage) on API doc.
+                  throw new ErrorModel(
+                    "Could not create new resource",
+                    500,
+                    "id"
+                  );
+                }
+              ),
+            (error) => {
+              // The value was invalid.
+              throw new ErrorModel(
+                `Invalid new value - ${error}`,
+                500,
+                "request.body"
+              );
+            }
+          )
+          .then(resolve, reject);
+      }
+    );
   }
 
   /**
    * @inheritdoc
    */
   update(id, value) {
-    return new Promise((/** @type {(value: boolean|PromiseLike<boolean>}=>any)} */ resolve, reject) => {
-      this.parseId(id)
-        .then(
-          (resourceId) =>
-            this.parseValue(value).then(
-              (resourceValue) => {
-                this.#dao.update(resourceId, resourceValue),
-                  then( (result) => {resolve(result)}, (error) => {
-                    throw new ErrorModel(error, 500);
-                  });
-              },
-              (error) => {
-                // The resource id was invalid.
-                // TODO: Checking of the actual invalid properties data can be
-                // acquired.
-                // TODO: Add invalid resource properties to API ErrorModel 
-                throw new ErrorModel("Invalid resource value", 400, "value");
-              }
-            ),
-          (error) => {
-            throw new ErrorModel("No resource to update", 404, "id");
-          }
-        )
-        .then(resolve, reject);
-    });
+    return new Promise(
+      (
+        /** @type {(value: boolean|PromiseLike<boolean>}=>any)} */ resolve,
+        reject
+      ) => {
+        if (!this.canUpdate) {
+          reject(new ErrorModel("Operation not supported", 501));
+        }
+
+        this.parseId(id)
+          .then(
+            (resourceId) =>
+              this.parseValue(value).then(
+                (resourceValue) => {
+                  this.#dao.update(resourceId, resourceValue),
+                    then(
+                      (result) => {
+                        resolve(result);
+                      },
+                      (error) => {
+                        throw new ErrorModel(error, 500);
+                      }
+                    );
+                },
+                (error) => {
+                  // The resource id was invalid.
+                  // TODO: Checking of the actual invalid properties data can be
+                  // acquired.
+                  // TODO: Add invalid resource properties to API ErrorModel
+                  throw new ErrorModel("Invalid resource value", 400, "value");
+                }
+              ),
+            (error) => {
+              throw new ErrorModel("No resource to update", 404, "id");
+            }
+          )
+          .then(resolve, reject);
+      }
+    );
   }
 
   /**
    * @inheritdoc
    */
   remove(id) {
-    return new Promise((/** @type {(value: boolean|PromiseLike<boolean>}=>any)} */resolve, reject) => {
-      this.parseId(id)
-        .then((resourceId) => this.#dao.remove(resourceId))
-        .then(resolve, reject);
-    });
+    return new Promise(
+      (
+        /** @type {(value: boolean|PromiseLike<boolean>}=>any)} */ resolve,
+        reject
+      ) => {
+        if (!this.canDelete) {
+          reject(new ErrorModel("Operation not supported", 501));
+        }
+        this.parseId(id)
+          .then((resourceId) => this.#dao.remove(resourceId))
+          .then(resolve, reject);
+      }
+    );
   }
 
   /**
@@ -811,47 +965,58 @@ export class RestResource extends BasicDao {
    * @returns {Promise<boolean>} The promise of altering the value of the
    * resource.
    */
-  async alter(id, value) {
-    return new Promise((/** @type {(value: boolean|PromiseLike<boolean>}=>any)} */resolve, reject) => {
-      this.parseId(id)
-        .then(
-          (parsedId) =>
-            this.#dao.one(parsedId).then(
-              async (oldDaoValue) => {
-                const oldValue = await this.#formatValue(oldDaoValue);
-                this.update(id, { ...oldValue, ...value }).catch((error) => {
-                  if (error.cause) {
-                    throw new ErrorModel(
-                      error.message,
-                      this.getErrorCode(error),
-                      this.getErrorSource(error)
-                    );
-                  } else {
-                    throw new ErrorModel(error.message);
-                  }
-                });
-              },
-              (error) => {}
-            ),
-          (error) => {
-            // The identifier could not be parsed.
-            throw new ErrorModel(404, "No event with identifier.");
-          }
-        )
-        .then(resolve, reject);
-    });
+  alter(id, value) {
+    return new Promise(
+      (
+        /** @type {(value: boolean|PromiseLike<boolean>}=>any)} */ resolve,
+        reject
+      ) => {
+        if (!this.canAlter()) {
+          reject(new ErrorModel("Operation not supported", 501));
+        }
+        this.parseId(id)
+          .then(
+            (parsedId) =>
+              this.#dao.one(parsedId).then(
+                async (oldDaoValue) => {
+                  const oldValue = await this.#formatValue(oldDaoValue);
+                  this.update(id, { ...oldValue, ...value }).catch((error) => {
+                    if (error.cause) {
+                      throw new ErrorModel(
+                        error.message,
+                        this.getErrorCode(error),
+                        this.getErrorSource(error)
+                      );
+                    } else {
+                      throw new ErrorModel(error.message);
+                    }
+                  });
+                },
+                (error) => {}
+              ),
+            (error) => {
+              // The identifier could not be parsed.
+              throw new ErrorModel(404, "No event with identifier.");
+            }
+          )
+          .then(resolve, reject);
+      }
+    );
   }
-}
+} // Class RestResource
 
 /**
  * Rest server storing important details of the rest server.
  */
 export class RestServer {
+  /**
+   * Create a new Rest Server.
+   */
   constructor() {}
 
   /**
    * The entries of the server.
-   * @type {[string, string, ResourceOptions<any,any>, import("./BasicDao.mjs").Dao<any, any>]}
+   * @type {[string, string, ResourceAccessOptions<any,any>, import("./BasicDao.mjs").Dao<any, any>]}
    */
   #resources = new Array();
 
@@ -876,14 +1041,19 @@ export class RestServer {
    * @template TYPE The type of the resource.
    * @param {string} basePath The rsource path.
    * @param {string} resourceName The name of the resource.
-   * @param {import("./BasicDao.mjs").Dao<ID, TYPE½} dao The deo handling the path resourcers.
-   * @param {ResourceOptions<ID,TYPE>} [options={}] The options of the resource.
+   * @param {import("./BasicDao.mjs").Dao<ID, TYPE>} dao The deo handling the path resourcers.
+   * @param {RestResourceOptions<ID,TYPE>} [options={}] The options of the resource.
    */
   registerResource(basePath, resourceName, dao, options) {
     if (this.hasResource(basePath, resourceName)) {
       throw new RangeError("The resource path reserved");
     } else {
-      this.#resources.push([basePath, resourceName, options, dao]);
+      this.#resources.push([
+        basePath,
+        resourceName,
+        options,
+        new RestResource(dao),
+      ]);
     }
   }
 
