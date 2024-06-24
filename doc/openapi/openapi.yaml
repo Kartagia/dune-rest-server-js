@@ -1,0 +1,38 @@
+
+#
+# OpenAPI specification for the DuneRest Server API
+#
+
+openapi: 3.1.0
+servers:
+  - url: http://localhost:3000
+    description: Development server
+info:
+  title: Dune REST API
+  description: >
+    Dune REST API for storing Dune: Adventures in the Imperium character and campaign data.
+  version: 0.0.1
+  contact:
+    name: "Antti Kautiainen"
+    email: antti@kautiainen.com
+    url: https://antti.kautiainen.com/apis/DuneRest
+  license:
+    identifier: MIT
+    name: MIT
+paths:
+  /people: 
+    $ref: "./person.yaml#/paths/~1people"
+  /people/{id}:
+    $ref: "./person.yaml#/paths/~1people~1{id}"
+  # The skill descriptions.
+    # The drive descriptions.
+#  /drives:
+  # The trait descriptions.
+#  /traits:
+  # The asset descriptions.
+#  /assets:
+  # The talent descriptions.
+#  /talents:
+#components:
+tags: 
+  $ref: "./shared.yaml#/tags"

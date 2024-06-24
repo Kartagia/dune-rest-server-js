@@ -1,0 +1,38 @@
+
+#
+# OpenAPI specification of the skills API.
+#
+
+openapi: 3.1.0
+servers:
+  - url: http://localhost:3000
+    description: Development server
+info:
+  title: Dune REST Skills API
+  description: >
+    Dune REST API for storing Dune: Adventures in the Imperium skill information.
+  version: 0.0.1
+  contact:
+    name: "Antti Kautiainen"
+    email: antti@kautiainen.com
+    url: antti.kautiainen.com/apis/DuneRest
+  license:
+    identifier: MIT
+    name: MIT
+components:
+  schemas:
+    id: 
+      $ref: "../skills.yaml#/components/schemas/id"
+    Skill:
+      $ref: "../skills.yaml#/components/schemas/Skill"
+    NewSkill:
+      $ref: "../skills.yaml#/components/schemas/NewSkill"
+    SkillEntries:
+      $ref: "../skills.yaml#/components/schemas/SkillEntries"
+paths:
+  /skills:
+    $ref: "../skills.yaml#/paths/~1skills"
+  /skills/{id}:
+    $ref: "../skills.yaml#/paths/~1skills~1{id}"
+tags: 
+  $ref: "../shared.yaml#/tags"
