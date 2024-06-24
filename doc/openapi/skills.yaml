@@ -221,6 +221,12 @@ paths:
       tags:
         - Skills
         - Update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Skill"
       responses:
         "200":
           description: Skill was updated.
