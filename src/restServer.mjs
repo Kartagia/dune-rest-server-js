@@ -210,10 +210,9 @@ export function orElse(
  *
  */
 export class ErrorModel {
-
   /**
    * Parses error model from velue.
-   * @param {string|object} source The parsed string or the parsed error model. 
+   * @param {string|object} source The parsed string or the parsed error model.
    * @returns {ErrorModel} The parsed error model.
    * @throws {SyntaxError} The parse failed.
    */
@@ -228,11 +227,11 @@ export class ErrorModel {
         } else {
           throw new TypeError("Not an object");
         }
-      } catch(err) {
+      } catch (err) {
         if (err instanceof Error && err.type === SyntaxError.type) {
           throw err;
         }
-        throw new SyntaxError("Invalid source string", {cause: err});
+        throw new SyntaxError("Invalid source string", { cause: err });
       }
     }
   }
@@ -682,8 +681,10 @@ export class RestResource extends BasicDao {
       this.#dao
         .all()
         .then((entries) =>
-          entries.map(async ([id, value]) => {
-            return [await this.formatId(id), await this.formatValue(value, id)];
+          entries.map(async ([ /** @type {ID} */ id, /** @type {TYPE} */ value]) => {
+            const restId = await this.formatId(id);
+            const restData = await this.formatValue(value, id);
+            return [restId, restData];
           })
         )
         .then(resolve, reject);
@@ -694,32 +695,26 @@ export class RestResource extends BasicDao {
    * @inheritdoc
    */
   one(id) {
-    const daoId = this.parseId(id);
     /**
      * @type {Promise<RestData>}
      */
     return this.parseId(id).then(
       (daoId) =>
-        this.#dao.one(daoId).then((/** @type {TYPE} */ daoResource) =>
-          this.formatValue(daoResource, daoId).then(
-            (apiResult) => {
-              return apiResult;
-            },
-            (error) => {
-              // The formatting failed.
-              throw new ErrorModel(
-                error,
-                500
-              );
-            }
-          ), 
+        this.#dao.one(daoId).then(
+          (/** @type {TYPE} */ daoResource) =>
+            this.formatValue(daoResource, daoId).then(
+              (apiResult) => {
+                return apiResult;
+              },
+              (error) => {
+                // The formatting failed.
+                throw new ErrorModel(error, 500);
+              }
+            ),
           (error) => {
             // the value does not exist.
-            throw new ErrorModel(
-              error,
-              404
-            );
-        }
+            throw new ErrorModel(error, 404);
+          }
         ),
       (error) => {
         // The identifier was invalid.
@@ -736,12 +731,32 @@ export class RestResource extends BasicDao {
    * @inheritdoc
    */
   create(value) {
-    return new Promise((resolve, reject) => {
+    return new Promise((/** @type {(value: string|PromiseLike<string>}=>any)} */resolve, reject) => {
       this.parseValue(value)
-        .then((resourceValue) =>
-          this.#dao.create(resourceValue).then((daoId) => {
-            return this.formatId(daoId);
-          })
+        .then(
+          (resourceValue) =>
+            this.#dao.create(resourceValue).then(
+              (daoId) => {
+                return this.formatId(daoId);
+              },
+              (error) => {
+                // The createion of the resource failed.
+                // TODO: Alter the error code to proper 507 (Insufficient storage) on API doc.
+                throw new ErrorModel(
+                  "Could not create new resource",
+                  500,
+                  "id"
+                );
+              }
+            ),
+          (error) => {
+            // The value was invalid.
+            throw new ErrorModel(
+              `Invalid new value - ${error}`,
+              500,
+              "request.body"
+            );
+          }
         )
         .then(resolve, reject);
     });
@@ -751,12 +766,28 @@ export class RestResource extends BasicDao {
    * @inheritdoc
    */
   update(id, value) {
-    return new Promise((resolve, reject) => {
+    return new Promise((/** @type {(value: boolean|PromiseLike<boolean>}=>any)} */ resolve, reject) => {
       this.parseId(id)
-        .then((resourceId) =>
-          this.parseValue(value).then((resourceValue) =>
-            this.#dao.update(resourceId, resourceValue)
-          )
+        .then(
+          (resourceId) =>
+            this.parseValue(value).then(
+              (resourceValue) => {
+                this.#dao.update(resourceId, resourceValue),
+                  then( (result) => {resolve(result)}, (error) => {
+                    throw new ErrorModel(error, 500);
+                  });
+              },
+              (error) => {
+                // The resource id was invalid.
+                // TODO: Checking of the actual invalid properties data can be
+                // acquired.
+                // TODO: Add invalid resource properties to API ErrorModel 
+                throw new ErrorModel("Invalid resource value", 400, "value");
+              }
+            ),
+          (error) => {
+            throw new ErrorModel("No resource to update", 404, "id");
+          }
         )
         .then(resolve, reject);
     });
@@ -766,7 +797,7 @@ export class RestResource extends BasicDao {
    * @inheritdoc
    */
   remove(id) {
-    return new Promise((resolve, reject) => {
+    return new Promise((/** @type {(value: boolean|PromiseLike<boolean>}=>any)} */resolve, reject) => {
       this.parseId(id)
         .then((resourceId) => this.#dao.remove(resourceId))
         .then(resolve, reject);
@@ -774,13 +805,14 @@ export class RestResource extends BasicDao {
   }
 
   /**
-   *
-   * @param {ID} id
-   * @param {*} value
-   * @returns
+   * Update properties of an existing resource.
+   * @param {string} id The REST identifier of the resource.
+   * @param {*} value The updated fields.
+   * @returns {Promise<boolean>} The promise of altering the value of the
+   * resource.
    */
   async alter(id, value) {
-    return new Promise((resolve, reject) => {
+    return new Promise((/** @type {(value: boolean|PromiseLike<boolean>}=>any)} */resolve, reject) => {
       this.parseId(id)
         .then(
           (parsedId) =>
