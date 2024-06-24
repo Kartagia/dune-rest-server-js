@@ -1005,6 +1005,14 @@ export class RestResource extends BasicDao {
   }
 } // Class RestResource
 
+
+/**
+ * Server resource entry.
+ * @template [ID=string] The identifier type of the dao.
+ * @template TYPE The value type of the dao.
+ * @typedef {[string, string, ResourceAccessOptions<ID, TYPE>, RestResource<ID,TYPE>] ServerResource
+ */
+
 /**
  * Rest server storing important details of the rest server.
  */
@@ -1016,7 +1024,7 @@ export class RestServer {
 
   /**
    * The entries of the server.
-   * @type {[string, string, ResourceAccessOptions<any,any>, import("./BasicDao.mjs").Dao<any, any>]}
+   * @type {ServerResource<any,any>[]}
    */
   #resources = new Array();
 
@@ -1044,15 +1052,14 @@ export class RestServer {
    * @param {import("./BasicDao.mjs").Dao<ID, TYPE>} dao The deo handling the path resourcers.
    * @param {RestResourceOptions<ID,TYPE>} [options={}] The options of the resource.
    */
-  registerResource(basePath, resourceName, dao, options) {
+  registerResource(basePath, resourceName, dao, options={}) {
     if (this.hasResource(basePath, resourceName)) {
       throw new RangeError("The resource path reserved");
     } else {
       this.#resources.push([
         basePath,
         resourceName,
-        options,
-        new RestResource(dao),
+        new RestResource(dao, options)
       ]);
     }
   }
@@ -1068,6 +1075,12 @@ export class RestServer {
     );
   }
 
+  /**
+   * Fetch all identifier-data pairs.
+   * @param {string} basePath The base path.
+   * @param {string} resourceName The resource name.
+   * @returns {Promise<[string, RestData][]>}
+   */
   fetchAll(basePath, resourceName) {
     return new Promise((resolve, reject) => {
       if (this.hasResource(basePath, resourceName)) {
