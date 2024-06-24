@@ -708,7 +708,7 @@ export class RestResource extends BasicDao {
             (error) => {
               // The formatting failed.
               throw new ErrorModel(
-                error instanceof Error ? error.message : error,
+                error,
                 500
               );
             }
@@ -716,13 +716,17 @@ export class RestResource extends BasicDao {
           (error) => {
             // the value does not exist.
             throw new ErrorModel(
-              error instanceof Error ? error.message : error,
+              error,
               404
             );
         }
         ),
       (error) => {
         // The identifier was invalid.
+        if (error instanceof ReferenceError) {
+          // The idParser is missing.
+          throw new ErrorModel("Resource not avaiable", 500, "id");
+        }
         throw new ErrorModel(`Invalid identifier - ${error}`, 400, "id");
       }
     );
