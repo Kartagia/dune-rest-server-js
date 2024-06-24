@@ -206,25 +206,144 @@ export function orElse(
  */
 
 /**
+ * The API ErrorModel for error model messages.
+ *
+ */
+export class ErrorModel {
+
+  /**
+   * Parses error model from velue.
+   * @param {string|object} source The parsed string or the parsed error model. 
+   * @returns {ErrorModel} The parsed error model.
+   * @throws {SyntaxError} The parse failed.
+   */
+  static parse(source) {
+    if (source instanceof Object) {
+      return new ErrorModel(source.message, source.code, source.source);
+    } else {
+      try {
+        const result = JSON.parse(source);
+        if (result instanceof Object) {
+          return new ErrorModel(result.message, result.code, result.source);
+        } else {
+          throw new TypeError("Not an object");
+        }
+      } catch(err) {
+        if (err instanceof Error && err.type === SyntaxError.type) {
+          throw err;
+        }
+        throw new SyntaxError("Invalid source string", {cause: err});
+      }
+    }
+  }
+
+  /**
+   * Create a new error model.
+   * @param {string|Error} message The message of the error, or an error whose
+   * message is used.
+   * @param {number} code The HTML error code of the error.
+   * @param {string} [source] The source of the error.
+   * @throws {SyntaxError} The error message or the error code was invalid.
+   */
+  constructor(message, code = 400, source = undefined) {
+    this.message = this.checkMessage(message);
+    this.code = this.checkErrorCode(code);
+    this.source = source;
+  }
+
+  /**
+   * Check the message value.
+   * @param {*} message The checked value.
+   * @returns {string} The message derived from the message.
+   * @throws {SyntaxError} The message was invalid.
+   */
+  checkMessage(message) {
+    if (message instanceof Error) {
+      return this.checkMessage(message.message);
+    }
+    if (typeof message !== "string") {
+      throw new SyntaxError("Only string or Error messages supported");
+    }
+    return message;
+  }
+
+  /**
+   * Check the code value.
+   * @param {*} errorCode The checked value.
+   * @returns {number} The error code derived form the given value.
+   * @throws {SyntaxError} The message was invalid.
+   */
+  checkErrorCode(errorCode) {
+    switch (typeof errorCode) {
+      case "string":
+        return this.checkErrorCode(Number(errorCode));
+      case "number":
+        if (
+          Number.isSafeInteger(errorCode) &&
+          errorCode >= 100 &&
+          errorCode <= 600
+        ) {
+          return errorCode;
+        }
+      default:
+        throw new SyntaxError(
+          "The error code must be either astring or an integer number"
+        );
+    }
+  }
+
+  /**
+   * Check soruce value.
+   * @param {*} source THe tested source value.
+   * @returns {string} The source value derived from the source.
+   * @throws {SyntaxError} The source value was invalid.
+   */
+  checkSource(source) {
+    if (typeof source === "string") {
+      if (source && source.trim() == source) {
+        return source;
+      }
+    }
+    throw new SyntaxError(
+      "The source must be a non-empty string value without leading or trailing whitespaces"
+    );
+  }
+
+  /**
+   * The JSON representation of the error model.
+   */
+  toJSON() {
+    if (this.source) {
+      return JSON.stringify({ message: this.message, code: this.code });
+    } else {
+      return JSON.stringify({
+        message: this.message,
+        code: this.code,
+        source: this.source,
+      });
+    }
+  }
+}
+
+/**
  * A rest resource cottaining basic dao.
  * @template [ID=string] The identifier type of the actula DAO.
  * @template TYPE The actual value stored in the DAO.
  * @extends {BasicDao<string, RestData>}
  */
 export class RestResource extends BasicDao {
-  
-    /**
-     * Convert the identifier to the JSON string representation.
-     * @type {IdFormatter<ID>} 
-     */
+  /**
+   * Convert the identifier to the JSON string representation.
+   * @type {IdFormatter<ID>}
+   */
   static defaultIdFormatter(id) {
     try {
-        return JSON.stringify(id);
+      return JSON.stringify(id);
     } catch (err) {
-        throw new RangeError("Invalid resource identifier", { cause: err });
-      }
+      throw new RangeError("Invalid resource identifier", { cause: err });
     }
-    /**
+  }
+  /**
    * Create identifier formatter.
    * @template ID The identifeir type.
    * @param { IdFormatter<ID>|undefined} formatFn The formatter function.
@@ -423,7 +542,7 @@ export class RestResource extends BasicDao {
   /**
    * Create a new REST resource.
    * @param {Dao<ID,TYPE>} dao The DAO performing actual storage of the resources.
-   * @param {RestResourceOptions<ID,TYPE>} [options] The resource options.
+   * @param {Readonly<RestResourceOptions<ID,TYPE>>} [options] The resource options.
    */
   constructor(dao, options = {}) {
     super();
@@ -559,14 +678,16 @@ export class RestResource extends BasicDao {
    * @inheritdoc
    */
   all() {
-    return this.#dao
-      .all()
-      .then((entries) =>
-        entries.map(([id, value]) => [
-          this.formatId(id),
-          this.formatValue(value, id),
-        ])
-      );
+    return new Promise(async (resolve, reject) => {
+      this.#dao
+        .all()
+        .then((entries) =>
+          entries.map(async ([id, value]) => {
+            return [await this.formatId(id), await this.formatValue(value, id)];
+          })
+        )
+        .then(resolve, reject);
+    });
   }
 
   /**
@@ -577,9 +698,34 @@ export class RestResource extends BasicDao {
     /**
      * @type {Promise<RestData>}
      */
-    return this.#dao
-      .one(daoId)
-      .then((/** @type {TYPE} */ result) => this.formatValue(result, daoId));
+    return this.parseId(id).then(
+      (daoId) =>
+        this.#dao.one(daoId).then((/** @type {TYPE} */ daoResource) =>
+          this.formatValue(daoResource, daoId).then(
+            (apiResult) => {
+              return apiResult;
+            },
+            (error) => {
+              // The formatting failed.
+              throw new ErrorModel(
+                error instanceof Error ? error.message : error,
+                500
+              );
+            }
+          ), 
+          (error) => {
+            // the value does not exist.
+            throw new ErrorModel(
+              error instanceof Error ? error.message : error,
+              404
+            );
+        }
+        ),
+      (error) => {
+        // The identifier was invalid.
+        throw new ErrorModel(`Invalid identifier - ${error}`, 400, "id");
+      }
+    );
   }
 
   /**
@@ -619,6 +765,43 @@ export class RestResource extends BasicDao {
     return new Promise((resolve, reject) => {
       this.parseId(id)
         .then((resourceId) => this.#dao.remove(resourceId))
+        .then(resolve, reject);
+    });
+  }
+
+  /**
+   *
+   * @param {ID} id
+   * @param {*} value
+   * @returns
+   */
+  async alter(id, value) {
+    return new Promise((resolve, reject) => {
+      this.parseId(id)
+        .then(
+          (parsedId) =>
+            this.#dao.one(parsedId).then(
+              async (oldDaoValue) => {
+                const oldValue = await this.#formatValue(oldDaoValue);
+                this.update(id, { ...oldValue, ...value }).catch((error) => {
+                  if (error.cause) {
+                    throw new ErrorModel(
+                      error.message,
+                      this.getErrorCode(error),
+                      this.getErrorSource(error)
+                    );
+                  } else {
+                    throw new ErrorModel(error.message);
+                  }
+                });
+              },
+              (error) => {}
+            ),
+          (error) => {
+            // The identifier could not be parsed.
+            throw new ErrorModel(404, "No event with identifier.");
+          }
+        )
         .then(resolve, reject);
     });
   }
