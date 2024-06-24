@@ -97,5 +97,103 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Person"
+        "404": 
+          description: Not found.
+        "501": 
+          description: Getting single resource not supported.
+        "503":
+          description: Getting single resource not possible at the moment.
+    delete:
+      operationId: remove-character
+      tags:
+      - Characters
+      - Dune RPG
+      - Remove
+      response:
+        "200":
+          description: All went fine.
+          content:
+            application/json: boolean
+        "501": 
+          description: Removing single resource not supported.
+        "503":
+          description: Removing single resource not possible at the moment.
+    put: 
+      operationId: update-character
+      tags:
+        - Characters
+        - Dune RPG
+        - Update
+      summary: Replace existing character.
+      description: Replaces an existing character
+      requestBody:
+        required: true
+        content:
+          application/json:
+            $ref: "#/components/schemas/NewPerson"
+      responses:
+        "200":
+          description: All went fine.
+          content:
+            application/json: boolean
+        "404": 
+          description: Not found.
+        "501": 
+          description: Setting single resource not supported.
+        "503":
+          description: Setting single resource not possible at the moment.
+    patch: 
+      operationId: alter-character
+      tags:
+        - Characters
+        - Dune RPG
+        - Alter
+      summary: Replace existing character.
+      description: Replaces an existing character
+      requestBody:
+        required: true
+        content:
+          application/json:
+            $ref: "#/components/schemas/NewPerson"
+      responses:
+        "200":
+          description: All went fine.
+          content:
+            application/json: boolean
+        "404": 
+          description: Not found.
+        "400":
+          description: Invalid new property values.
+        "501": 
+          description: Alter single resource not supported.
+        "503":
+          description: Alter single resource not possible at the moment.
+    post:
+      operationId: get-character
+      tags:
+        - Characters
+        - Dune RPG
+        - Create New
+      summary: Get one existing character.
+      description: Retrieves one character from the current character pool.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            $ref: "#/components/schemas/NewPerson"
+      responses:
+        "200":
+          description: All went fine.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "404": 
+          description: Not found.
+        "501": 
+          description: Creating a new resource not supported.
+        "503":
+          description: Creatign a new resource not possible at the moment.
+
 tags:
   $ref: "./shared.yaml#/tags"
