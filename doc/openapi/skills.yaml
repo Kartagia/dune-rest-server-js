@@ -1,0 +1,255 @@
+#
+# OpenAPI components for skills of the Dune
+#
+
+components:
+  schemas:
+    # The identifier value.
+    name:
+      $ref: "./shared.yaml#/components/schemas/name"
+    id: 
+      $ref: "./shared.yaml#/components/schemas/id"
+    statValue:
+      $ref: "./shared.yaml#/components/schemas/statValue"
+    Text:
+      $ref: "./shared.yaml#/components/schemas/Text"
+    Focus:
+      type: object
+      properties:
+        name: 
+         schema:
+           $ref: "#/components/schemas/name"
+        description:
+          schema:
+           $ref: "#/components/schemas/Text"
+      required:
+      - name
+    focusRef:
+      type: string
+    Skill:
+      type: object
+      properties:
+        name:
+          description: The name of the skill.
+          schema:
+            $ref: "#/components/schemas/name"
+        id:
+          description: The identifier of the skill.
+          schema:
+            $ref: "#/components/schemas/id"
+        description:
+          description: The description of the skill.
+          schema:
+            $ref: "#/components/schemas/Text"
+        focusExamples:
+          type: array
+          minItems: 0
+          items:
+            schema:
+              $ref: "#/components/schemas/focusRef"
+      required:
+      - name
+      - id
+    NewSkill:
+      type: object
+      description: The model for a new skill. The new skills does not have identifier.
+      properties:
+        name:
+          description: The name of the skill.
+          schema:
+            $ref: "#/components/schemas/name"
+        description:
+          description: The description of the skill.
+          schema:
+            $ref: "#/components/schemas/Text"
+        focusExamples:
+          type: array
+          minItems: 0
+          items:
+            schema:
+              $ref: "#/components/schemas/focusRef"
+      required:
+      - name
+
+    SkillRef:
+      type: object
+      properties:
+        id:
+          description: The identifier of the skill.
+          schema:
+            $ref: "#/components/schemas/id"
+      required:
+      - id
+    SkillValueRef:
+      type: object
+      properties:
+        id:
+          description: The identifier of the skill.
+          schema:
+            $ref: "#/components/schemas/id"
+        current:
+          summary: The current value of the skill.
+          description: The current value of the skill.
+          schema:
+            $ref: "#/components/schemas/statValue"
+        minLevel:
+          description: The minimal level of the skill.
+          schema:
+            $ref: "#/components/schemas/statValue"
+        maxLevel:
+          description: The maximal level of the skill.
+          schema:
+            $ref: "#/components/schemas/statValue"
+      required:
+      - id
+    SkillEntries:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            schema:
+              $ref: "#/components/schemas/id"
+          skill:
+            schema:
+              $ref: "#/components/schemas/Skill"
+        required:
+        - id
+        - skill
+
+    ErrorModel:
+      $ref: "./shared.yaml#/components/schemas/ErrorModel"
+
+                
+paths:
+  /skills:
+    get:
+      operationId: get-skills
+      tags:
+        - Skills
+        - Identifiers
+        - Dune RPG
+        - Get All
+      summary: Get all skills.
+      description: >
+        Retrieves the list of skill entries.
+      responses:
+        "200":
+          description: All went well.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillEntries"
+  /skills/{id}:
+    parameters:
+      - name: id
+        description: The identifier of the skill.
+        in: path  
+        required: true
+        schema:
+          $ref: "#/components/schemas/id"
+    get:
+      operationId: get-skill
+      tags:
+        - Skills
+        - Get One
+        - Dune RPG
+      summary: Get single skill.
+      description: >
+        Retrieves a single skill description. 
+      responses:
+        "200":
+          description: The skill exists and is returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Skill"
+        "404":
+          description: Skill not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+    post:
+      operationId: create-skill
+      tags:
+        - Skills
+        - Dune RPG
+        - Create New
+      description: Add a new Skill to the skills collection.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewSkill"
+      responses:
+        "201":
+          description: Skill created.
+        "500":
+          description: Skill creation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+    put:
+      summary: Update an exsting skill.
+      description: >
+        Updates an existing skill.
+      operationId: update-skill
+      tags:
+        - Skills
+        - Update
+      responses:
+        "200":
+          description: Skill was updated.
+          content:
+            application/json:
+              schema:
+                type: boolean
+        "404":
+          description: Skill does not exist.
+        "400":
+          description: Skill was invalid.  
+          content:
+            applicaton/json:
+              schema: 
+                ref: "#/components/schemas/ErrorModel"
+    patch:
+      summary: Update properties of an exsting skill.
+      description: >
+        Updates some properties of an existing skill.
+      operationId: alter-skill
+      tags:
+        - Skills
+        - Alter
+      responses:
+        "200":
+          description: Skill was altered.
+          content:
+            application/json:
+              schema:
+                type: boolean
+        "404":
+          description: Skill does not exist.
+        "400":
+          description: Some of the new properties were invalid
+          content:
+            applicaton/json:
+              schema: 
+                ref: "#/components/schemas/ErrorModel"  
+
+    delete:
+      operationId: delete-skill
+      summary: Deletes an existing skill.
+      description: An existing skill with given identifier is removed from the collection.
+      tags:
+      - Skills
+      - Remove
+      - Dune RPG
+      responses:
+        "204":
+          description: The skill was removed.
+        "404":
+          description: The skill does not exist.
+
