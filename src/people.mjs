@@ -6,7 +6,7 @@
 
 import { BasicDao } from "./BasicDao.mjs";
 
-//import { ConsoleLogger, Logger } from './logger.mjs';
+import { ConsoleLogger, Logger } from './logger.mjs';
 
 const log = new ConsoleLogger();
 
