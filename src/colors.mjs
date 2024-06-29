@@ -128,14 +128,27 @@ export function toHex(value, options = {}) {
 }
 
 /**
+ * The parse hex options.
+ * @typedef {Object} ParseHexOptions
+ * @property {number} [bytes=2] The number of bytes the hex contains.
+ * @property {string} [message="Invalid value"] The error message on failed parse.
+ */
+
+/**
+ * The default parse hex otions.
+ * @type {Required<ParseHexOptions>}
+ */
+const defualtParseHexOptions = {bytes: 2, message: "Invalid value"}
+
+/**
  * Parse a hex value.
  * @param {string} value The parsed string.
- * @param {number} [bytes=2] THe number of bytes.
- * @param {string} [message="Invalid value"] The error message.
+ * @param {ParseHexOptions} [options] THe parse options.
  * @returns {number} THe hex value.
  * @throws {TypeError} THe valeu was not a valid string representaiton of a hex.
  */
-function parseHex(value, bytes = 2, message = "Invalid value") {
+function parseHex(value, options = {}) {
+  const {bytes, message} = {...defualtParseHexOptions, ...options};
   const regex = new RegExp("^(?:0x|#)?" + `([a-f0-9]{${2*bytes}})` +  "$", "i");
   if (regex.test(value)) {
     return Number.parseInt(value.substring(value.length - 2 * bytes), 16);
@@ -146,15 +159,15 @@ function parseHex(value, bytes = 2, message = "Invalid value") {
 /**
  * Check hex word.
  * @param {any} value The hex word as string or as a number.
- * @param {number} [bytes=2] The number of bytes the word has.
- * @param {string} [message="Invalid value"] The error message.
+ * @param {ParseHexOptions} [options] The parse options.
  * @returns {number} The word value as an integer number.
  * @throws {TypeError} The value was ivnalid.
  */
-function checkHexWord(value, bytes = 2, message = "Invalid value") {
+function checkHexWord(value, options = {}) {
+  const {bytes, message} = {...defualtParseHexOptions, ...options};
   switch (typeof value) {
     case "string":
-      return parseHex(value);
+      return parseHex(value, options);
     case "number":
       if (Number.isSafeInteger(value) && value >= 0 && value < 2**bytes) {
         return value;
@@ -173,9 +186,9 @@ function checkHexWord(value, bytes = 2, message = "Invalid value") {
  */
 export function rgb(red, green, blue) {
   return {
-    red: checkHexWord(red, 2, "Invalid red color value"),
-    gree: checkHexWord(green, 2, "Invalid green color value"),
-    blue: checkHexWord(blue, 2, "Invalid blue color value"),
+    red: checkHexWord(red, {bytes: 2, message: "Invalid red color value"}),
+    gree: checkHexWord(green, {bytes: 2, message: "Invalid green color value"}),
+    blue: checkHexWord(blue, {bytes: 2, message: "Invalid blue color value"}),
     toString() {
       return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
     },
@@ -183,16 +196,17 @@ export function rgb(red, green, blue) {
 }
 
 /**
- * Create a rgb object.
+ * Create a rgba object.
  * @param {number|hex} red THe red color value.
  * @param {number|hex} green The green color value.
  * @param {number|hex} blue The blue color value.
+ * @param {number|hex} alpha The alpha channel value.
  * @returns {RGBObject} The RGB object.
  */
 export function rgba(red, green, blue, alpha = 255) {
   return {
     ...rgb(red, green, blue),
-    alpha: checkHexWord(alpha, 2, "Invalid alpha channel value"),
+    alpha: checkHexWord(alpha, {bytes: 2, message: "Invalid alpha channel value"}),
     toString() {
       return `#${toHex(red)}${toHex(green)}${toHex(blue)}${toHex(alpha)}`;
     },
