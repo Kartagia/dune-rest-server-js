@@ -5,8 +5,21 @@
  */
 
 /**
+ * The RGB value as an array of color values.
+ * @typedef {[red: number, green: number, blue: number]} RGBArray
+ */
+
+/**
+ * THe RGB valeu as an object. 
+ * @typedef {Object} RGBObject
+ * @property {number} red The red color value.
+ * @property {number} green The green color value.
+ * @property {number} blue The blue color value.
+ */
+
+/**
  * RGB color definition.
- * @typedef {[red: number, green: number, blue: number]|{red: number, green: number, blue: number}} RGB
+ * @typedef {RGBArray|RGBObject} RGB
  */
 
 /**
@@ -64,8 +77,22 @@ export function checkRGB(value) {
 }
 
 /**
+ * The RGB value as an array of color values.
+ * @typedef {[red: number, green: number, blue: number, alpha: number]} RGBAArray
+ */
+
+/**
+ * THe RGB valeu as an object. 
+ * @typedef {Object} RGBAObject
+ * @property {number} red The red color value.
+ * @property {number} green The green color value.
+ * @property {number} blue The blue color value.
+ * @property {number} alpha The alpha channel value.
+ */
+
+/**
  * RGBA color definition.
- * @typedef {[red: number, green: number, blue: number, alpha: number]|{red: number, green: number, blue: number, alpha: number}} RGB
+ * @typedef {RGBAArray|RGBAObject} RGBA
  */
 
 /**
@@ -75,10 +102,11 @@ export function checkRGB(value) {
  */
 
 /**
- *
+ *Convert a positive integer value to hex.
  * @param {number} value The integer value.
- * @param {FormatOptions} options The hex options.
- * @returns {string}
+ * @param {FormatOptions} [options] The hex options.
+ * @returns {string} THe hex string reprsentation of the given value. The result is zero-padded
+ * on high-end, and excess most significant hex digits are removed.
  * @throws {RangeError} The value was not a safe integer, or was a negative safe
  * integer.
  */
@@ -100,6 +128,13 @@ export function toHex(value, options = {}) {
   }
 }
 
+/**
+ * Create a rgb objec.t 
+ * @param {number|hex} red THe red color value.
+ * @param {number|hex} green The green color value.
+ * @param {number|hex} blue The blue color value.
+ * @returns {RGBObject} The RGB object.
+ */
 export function rgb(red, green, blue) {
   return {
     red,
