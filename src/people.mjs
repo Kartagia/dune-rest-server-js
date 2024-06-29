@@ -9,7 +9,8 @@ import { BasicDao } from "./BasicDao.mjs";
 import { ConsoleLogger, Logger } from './logger.mjs';
 
 const log = new ConsoleLogger();
-
+log.logLevel = "all";
+ 
 /** 
  * @template [ID=string] The identifier type.
  * @typedef {Object} NamedProps 
@@ -210,6 +211,9 @@ function getUpdateMessage(id, oldValue, newValue) {
 
 const dummyDaoProperties = {
     validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
+        console.log(`Checking if ${JSON.stringify(newValue)} is valid replacement for ${
+            JSON.stringify(newValue)
+        }`);
         return newValue.id === undefined || oldValue.id === newValue.id;
     },
     all: () => (Promise.resolve([...people.entries()])),
