@@ -1,6 +1,5 @@
-
 /**
- * The color support. 
+ * The color support.
  * @module
  */
 
@@ -10,7 +9,7 @@
  */
 
 /**
- * THe RGB valeu as an object. 
+ * THe RGB valeu as an object.
  * @typedef {Object} RGBObject
  * @property {number} red The red color value.
  * @property {number} green The green color value.
@@ -82,7 +81,7 @@ export function checkRGB(value) {
  */
 
 /**
- * THe RGB valeu as an object. 
+ * THe RGB valeu as an object.
  * @typedef {Object} RGBAObject
  * @property {number} red The red color value.
  * @property {number} green The green color value.
@@ -129,7 +128,44 @@ export function toHex(value, options = {}) {
 }
 
 /**
- * Create a rgb objec.t 
+ * Parse a hex value.
+ * @param {string} value The parsed string.
+ * @param {number} [bytes=2] THe number of bytes.
+ * @param {string} [message="Invalid value"] The error message.
+ * @returns {number} THe hex value.
+ * @throws {TypeError} THe valeu was not a valid string representaiton of a hex.
+ */
+function parseHex(value, bytes = 2, message = "Invalid value") {
+  const regex = new RegExp("^(?:0x|#)?" + `([a-f0-9]{${2*bytes}})` +  "$", "i");
+  if (regex.test(value)) {
+    return Number.parseInt(value.substring(value.length - 2 * bytes), 16);
+  }
+  throw new TypeError(message);
+}
+
+/**
+ * Check hex word.
+ * @param {any} value The hex word as string or as a number.
+ * @param {number} [bytes=2] The number of bytes the word has.
+ * @param {string} [message="Invalid value"] The error message.
+ * @returns {number} The word value as an integer number.
+ * @throws {TypeError} The value was ivnalid.
+ */
+function checkHexWord(value, bytes = 2, message = "Invalid value") {
+  switch (typeof value) {
+    case "string":
+      return parseHex(value);
+    case "number":
+      if (Number.isSafeInteger(value) && value >= 0 && value < 2**bytes) {
+        return value;
+      }
+      default:
+  }
+  throw new TypeError(message);
+}
+
+/**
+ * Create a rgb object.
  * @param {number|hex} red THe red color value.
  * @param {number|hex} green The green color value.
  * @param {number|hex} blue The blue color value.
@@ -137,21 +173,26 @@ export function toHex(value, options = {}) {
  */
 export function rgb(red, green, blue) {
   return {
-    red,
-    green,
-    blue,
+    red: checkHexWord(red, 2, "Invalid red color value"),
+    gree: checkHexWord(green, 2, "Invalid green color value"),
+    blue: checkHexWord(blue, 2, "Invalid blue color value"),
     toString() {
       return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
     },
   };
 }
 
+/**
+ * Create a rgb object.
+ * @param {number|hex} red THe red color value.
+ * @param {number|hex} green The green color value.
+ * @param {number|hex} blue The blue color value.
+ * @returns {RGBObject} The RGB object.
+ */
 export function rgba(red, green, blue, alpha = 255) {
   return {
-    red,
-    green,
-    blue,
-    alpha,
+    ...rgb(red, green, blue),
+    alpha: checkHexWord(alpha, 2, "Invalid alpha channel value"),
     toString() {
       return `#${toHex(red)}${toHex(green)}${toHex(blue)}${toHex(alpha)}`;
     },
