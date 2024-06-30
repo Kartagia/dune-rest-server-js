@@ -6,8 +6,13 @@
 
 import { BasicDao } from "./BasicDao.mjs";
 
+import { ConsoleLogger, Logger } from './logger.mjs';
+
+const log = new ConsoleLogger();
+log.logLevel = "all";
+ 
 /** 
- * @tempalte [ID=string] The identifier type.
+ * @template [ID=string] The identifier type.
  * @typedef {Object} NamedProps 
  * @property {string} name The main name of the object.
  * @property {ID} [id] The identifier of the object.
@@ -48,19 +53,26 @@ import { BasicDao } from "./BasicDao.mjs";
  */
 
 /**
- * The properties specific to the people.
- * @typedef {Object} PeopleSpecificProps
+ * The properties specific to the entiteis with skills.
+ * @typedef {Object} SkilledProps
  * @property {Skills} [skills] The skills of the person.
- * @property {"Support"|"Minor"|"Major"} [type="Major"] The type of the character.
  */
 
 /**
+ * The properties specific to the people.
+ * @typedef {Object} PeopleSpecificProps
+ * @property {"Support"|"Minor"|"Major"} [type="Major"] The type of the character.
+ */
+
+
+/**
  * The properties of the people. 
- * @typedef {NamedProps & PeopleSpecificProps} PeopleProps
+ * @typedef {NamedProps & PeopleSpecificProps & SkilledProps} PeopleProps
  */
 
 /**
  * Class representing a person.
+ * @extends {PeopleProps}
  */
 export class People {
     /**
@@ -94,6 +106,12 @@ export class People {
         }, {});
     }
 
+    /**
+     * Get the default identifier of the people.
+     * @param {PeopleProps} props The properties of the people model.
+     * @throws {SyntaxError} The name is invalid.
+     * @throws {TypeError} The type of the given people model were invalid.
+     */
     defaultId(props) {
         if (props && props.name) {
             return props.name;
@@ -176,17 +194,30 @@ export class PeopleDao extends BasicDao {
 
 /**
  * The storage of the people.
+ * @type {Map<string, People>}
  */
 let people = new Map();
 
 /**
- * The dummy memory based DAO.
- * @type {PeopleDao}
+ * @template [ID=string]
+ * @param {ID} id The altered identifier.
+ * @param {*} oldValue 
+ * @param {*} newValue 
+ * @returns 
  */
-export const dummyDao = new PeopleDao({
-    validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
-        return newValue.id === undefined || oldValue.id === newValue.id;
-    },
+function getUpdateMessage(id, oldValue, newValue) {
+    return `Entry %s updated to %o`;
+}
+
+function validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
+    console.log(`Checking if ${JSON.stringify(newValue)} is valid replacement for ${
+        JSON.stringify(newValue)
+    }`);
+    return newValue.id === undefined || oldValue.id === newValue.id;
+};
+
+const dummyDaoProperties = {
+    
     all: () => (Promise.resolve([...people.entries()])),
     one: (id) => {
         return new Promise( (resolve, reject) => {
@@ -197,15 +228,16 @@ export const dummyDao = new PeopleDao({
             }
         });
     },
-    update: (id, value) => {
+    update(id, value) {
         return new Promise((resolve, reject) => {
             try {
                 const newValue = new People(value);
                 const entry = people.get(id);
-                if (entry && this.validReplacement(entry, newValue)) {
+                if (entry && validReplacement(entry, newValue)) {
                     if (!newValue.id) {
                         newValue.id = entry.id;
                     }
+                    log.debug(log.formatMessage(getUpdateMessage(id, entry, newValue), [id, entry, newValue]));
                     people.set(id, newValue);
                     resolve(true);
                 } else {
@@ -214,6 +246,8 @@ export const dummyDao = new PeopleDao({
             } catch (err) {
                 // Update failed.
                 /** @todo Add error logging */
+                console.log(`Update of ${id} failed due ${err}`);
+                log.debug(log.formatMessage(`Update %s failed due error %o`, [id, err]));
                 resolve(false);
             }
         });
@@ -242,6 +276,12 @@ export const dummyDao = new PeopleDao({
         }
         );
     }
-})
+};
+
+/**
+ * The dummy memory based DAO.
+ * @type {PeopleDao}
+ */
+export const dummyDao = new PeopleDao(dummyDaoProperties)
 
 export default People; 
