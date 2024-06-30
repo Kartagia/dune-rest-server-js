@@ -138,7 +138,7 @@ export function toHex(value, options = {}) {
  * The default parse hex otions.
  * @type {Required<ParseHexOptions>}
  */
-const defualtParseHexOptions = {bytes: 2, message: "Invalid value"}
+const defualtParseHexOptions = { bytes: 2, message: "Invalid value" };
 
 /**
  * Parse a hex value.
@@ -148,8 +148,11 @@ const defualtParseHexOptions = {bytes: 2, message: "Invalid value"}
  * @throws {TypeError} THe valeu was not a valid string representaiton of a hex.
  */
 function parseHex(value, options = {}) {
-  const {bytes, message} = {...defualtParseHexOptions, ...options};
-  const regex = new RegExp("^(?:0x|#)?" + `([a-f0-9]{${2*bytes}})` +  "$", "i");
+  const { bytes, message } = { ...defualtParseHexOptions, ...options };
+  const regex = new RegExp(
+    "^(?:0x|#)?" + `([a-f0-9]{${2 * bytes}})` + "$",
+    "i"
+  );
   if (regex.test(value)) {
     return Number.parseInt(value.substring(value.length - 2 * bytes), 16);
   }
@@ -164,15 +167,15 @@ function parseHex(value, options = {}) {
  * @throws {TypeError} The value was ivnalid.
  */
 function checkHexWord(value, options = {}) {
-  const {bytes, message} = {...defualtParseHexOptions, ...options};
+  const { bytes, message } = { ...defualtParseHexOptions, ...options };
   switch (typeof value) {
     case "string":
       return parseHex(value, options);
     case "number":
-      if (Number.isSafeInteger(value) && value >= 0 && value < 2**bytes) {
+      if (Number.isSafeInteger(value) && value >= 0 && value < 2 ** bytes) {
         return value;
       }
-      default:
+    default:
   }
   throw new TypeError(message);
 }
@@ -186,9 +189,12 @@ function checkHexWord(value, options = {}) {
  */
 export function rgb(red, green, blue) {
   return {
-    red: checkHexWord(red, {bytes: 2, message: "Invalid red color value"}),
-    gree: checkHexWord(green, {bytes: 2, message: "Invalid green color value"}),
-    blue: checkHexWord(blue, {bytes: 2, message: "Invalid blue color value"}),
+    red: checkHexWord(red, { bytes: 2, message: "Invalid red color value" }),
+    gree: checkHexWord(green, {
+      bytes: 2,
+      message: "Invalid green color value",
+    }),
+    blue: checkHexWord(blue, { bytes: 2, message: "Invalid blue color value" }),
     toString() {
       return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
     },
@@ -206,7 +212,10 @@ export function rgb(red, green, blue) {
 export function rgba(red, green, blue, alpha = 255) {
   return {
     ...rgb(red, green, blue),
-    alpha: checkHexWord(alpha, {bytes: 2, message: "Invalid alpha channel value"}),
+    alpha: checkHexWord(alpha, {
+      bytes: 2,
+      message: "Invalid alpha channel value",
+    }),
     toString() {
       return `#${toHex(red)}${toHex(green)}${toHex(blue)}${toHex(alpha)}`;
     },
@@ -218,6 +227,20 @@ export function rgba(red, green, blue, alpha = 255) {
  * @extends {StyleDef}
  */
 export class ColorDef {
+  /**
+   * Create color definition from RGB.
+   * @param {RGB} [foreground] The foreground color. Defaults to the current
+   * color.
+   * @param {RGB} [background] The background color. Defaults to the current
+   * color.
+   */
+  static fromRGB(foreground = undefined, bacground = undefined) {
+    return new ColorDef().rgbForeground(foreground).rgbBackground(background);
+  }
+
+  /**
+   * Create a new color definition.
+   */
   constructor() {
     this.foreground = "";
     this.background = "";
@@ -225,6 +248,61 @@ export class ColorDef {
 
   get color() {
     return `${this.foreground}${this.background}`;
+  }
+
+  /**
+   * Set the foreground from RGB value.
+   * @param {RGB} [rgbForeground] The new RGB foreground.
+   * @returns {ColorDef} The color definition with RGB foreground set to the givne value.
+   */
+  rgbForeground(rgbForeground) {
+    if (rgbForeground !== undefined) {
+      const rgb = checkRGB(rgbForeground);
+      const [red, green, blue] = Array.isArray(rgb)
+        ? rgb
+        : [rgb.red, rgb.green, rgb.blue];
+      this.foreground = AnsiColorSupport.rgbForeground(red, green, blue);
+    } else {
+      this.foreground = "";
+    }
+    return this;
+  }
+
+  /**
+   * Set the background from RGB value.
+   * @param {RGB} [rgbBackground] The new RGB background.
+   * @returns {ColorDef} The color definition with RGB background set to the givne value.
+   */
+  rgbBackground(rgbBackground) {
+    if (rgbBackground !== undefined) {
+      const rgb = checkRGB(rgbBackground);
+      const [red, green, blue] = Array.isArray(rgb)
+        ? rgb
+        : [rgb.red, rgb.green, rgb.blue];
+      this.background = AnsiColorSupport.rgbBackground(red, green, blue);
+    } else {
+      this.backround = "";
+    }
+    return this;
+  }
+
+  /**
+   * Set colro by the code.
+   * @param {number} code The ANSI color code.
+   */
+  colorCode(code) {
+    const scheme = [
+      AnsiColorSupport.COLORS.foreground,
+      AnsiColorSupport.COLORS.background,
+    ].find((scheme) => scheme.first <= color && color <= scheme.last);
+    if (scheme === AnsiColorSupport.COLORS.foreground) {
+      this.foreground = scheme.toAnsiCommand(code);
+    } else if (scheme === AnsiColorSupport.COLORS.background) {
+      this.background = scheme.toAnsiCommand(code);
+    } else {
+      this.foreground = "";
+      this.background = "";
+    }
   }
 }
 
@@ -235,11 +313,14 @@ export class ColorDef {
  */
 
 /**
+ * A color scheme.
  * @typedef {Object} ColorScheme
  * @property {number} first The first valid value.
  * @property {number} last The last valid value.
+ * @property {(number)=>boolean} has Does the scheme contain color value.
  * @property {(number)=>string} toAnsiCommand Get ANSI command starting the color.
  * @property {Record<string, number>} [colors] The mapping from color names to the color codes.
+ * @property {Record<string, ColorScheme>} [members] The sub scheme of the current scheme.
  */
 
 /**
@@ -294,80 +375,22 @@ export class AnsiColorSupport {
    */
   static COLORS = {
     foreground: {
+      /**
+       * The first value of scheme.
+       * @type {number}
+       */
       first: 30,
+      /**
+       * The last value of scheme.
+       * @type {number}
+       */
       last: 37,
-      colors: [
-        "black",
-        "red",
-        "green",
-        "yellow",
-        "blue",
-        "magenta",
-        "cyan",
-        "white",
-      ].map((name, index) => ({ name: index + this.first })),
-      toAnsiCommand: AnsiColorSupport.foreground,
-    },
-    background: {
-      first: 40,
-      last: 47,
-      colors: [
-        "black",
-        "red",
-        "green",
-        "yellow",
-        "blue",
-        "magenta",
-        "cyan",
-        "white",
-      ].map((name, index) => ({ name: index + this.first })),
-      toAnsiCommand: AnsiColorSupport.background,
-    },
-    standard: {
-      first: 0,
-      last: 15,
-      standard: {
-        first: 0,
-        last: 7,
-        colors: [
-          "black",
-          "red",
-          "green",
-          "yellow",
-          "blue",
-          "magenta",
-          "cyan",
-          "white",
-        ].map((name, index) => ({ name: index + this.first })),
-        foreground: {
-          get first() {
-            return this.COLORS.standard.first;
-          },
-          get last() {
-            return this.COLORS.standard.last;
-          },
-          get colors() {
-            return this.COLORS.standard.colors;
-          },
-          toAnsiCommand: AnsiColorSupport.extentedCodeForeground,
-        },
-        background: {
-          get first() {
-            return this.COLORS.standard.first;
-          },
-          get last() {
-            return this.COLORS.standard.last;
-          },
-          get colors() {
-            return this.COLORS.standard.colors;
-          },
-
-          toAnsiCommand: AnsiColorSupport.extentedCodeBackground,
-        },
-      },
-      highIntencity: {
-        first: 8,
-        last: 15,
+      /**
+       * The mapping from known color names to the color values.
+       * @type {Record<string, number>}
+       */
+      colors: {
+        default: 39,
         ...[
           "black",
           "red",
@@ -378,63 +401,278 @@ export class AnsiColorSupport {
           "cyan",
           "white",
         ].map((name, index) => ({ name: index + this.first })),
-        foreground: {
-          get first() {
-            return this.COLORS.standard.first;
+      },
+      has(code) {
+        return (
+          code === this.colors.default ||
+          (this.first <= code && code <= this.last)
+        );
+      },
+      toAnsiCommand: AnsiColorSupport.foreground,
+    },
+    background: {
+      /**
+       * The first value of scheme.
+       * @type {number}
+       */
+      first: 40,
+      /**
+       * The last value of scheme.
+       * @type {number}
+       */
+      last: 47,
+      /**
+       * The mapping from known color names to the color values.
+       * @type {Record<string, number>}
+       */
+      colors: {
+        default: 49,
+        ...[
+          "black",
+          "red",
+          "green",
+          "yellow",
+          "blue",
+          "magenta",
+          "cyan",
+          "white",
+        ].map((name, index) => ({ name: index + this.first })),
+      },
+      has(code) {
+        return (
+          code === this.colors.default ||
+          (this.first <= code && code <= this.last)
+        );
+      },
+      toAnsiCommand: AnsiColorSupport.background,
+    },
+    standard: {
+      /**
+       * The first value of scheme.
+       * @type {number}
+       */
+      first: 0,
+      /**
+       * The last value of scheme.
+       * @type {number}
+       */
+      last: 15,
+      members: {
+        standard: {
+          /**
+           * The first value of scheme.
+           * @type {number}
+           */
+          first: 0,
+          /**
+           * The last value of scheme.
+           * @type {number}
+           */
+          last: 7,
+          /**
+           * The mapping from known color names to the color values.
+           * @type {Record<string, number>}
+           */
+          colors: {
+            ...[
+              "black",
+              "red",
+              "green",
+              "yellow",
+              "blue",
+              "magenta",
+              "cyan",
+              "white",
+            ].map((name, index) => ({ name: index + this.first })),
           },
-          get last() {
-            return this.COLORS.standard.last;
-          },
-          get colors() {
-            return this.COLORS.standard.colors;
-          },
-          toAnsiCommand: AnsiColorSupport.extentedCodeForeground,
-        },
-        background: {
-          get first() {
-            return this.COLORS.standard.first;
-          },
-          get last() {
-            return this.COLORS.standard.last;
-          },
-          get colors() {
-            return this.COLORS.standard.colors;
-          },
+          members:{
+            foreground: {
+              get first() {
+                return AnsiColorSupport.COLORS.standard.members.standard.first;
+              },
+              /**
+               * The last value of scheme.
+               * @type {number}
+               */
+              get last() {
+                return AnsiColorSupport.COLORS.standard.members.standard.last;
+              },
+              get colors() {
+                return AnsiColorSupport.COLORS.standard.members.standard.colors;
+              },
+              has(code) {
+                return (
+                  AnsiColorSupport.first <= code &&
+                  code <= AnsiColorSupport.last
+                );
+              },
+              toAnsiCommand: AnsiColorSupport.extentedCodeForeground,
+            },
+            background: {
+              get first() {
+                return AnsiColorSupport.COLORS.standard.members.standard.first;
+              },
+              /**
+               * The last value of scheme.
+               * @type {number}
+               */
+              get last() {
+                return AnsiColorSupport.COLORS.standard.members.standard.last;
+              },
+              get colors() {
+                return AnsiColorSupport.COLORS.standard.members.standard.colors;
+              },
+              has(code) {
+                return AnsiColorSupport.first <= code && code <= AnsiColorSupport.last;
+              },
 
-          toAnsiCommand: AnsiColorSupport.extentedCodeBackground,
+              toAnsiCommand: AnsiColorSupport.extentedCodeBackground,
+            },
+          },
+        },
+
+        highIntencity: {
+          /**
+           * The first value of scheme.
+           * @type {number}
+           */
+          first: 8,
+          /**
+           * The last value of scheme.
+           * @type {number}
+           */
+          last: 15,
+          colors: [
+            "black",
+            "red",
+            "green",
+            "yellow",
+            "blue",
+            "magenta",
+            "cyan",
+            "white",
+          ].map((name, index) => ({ name: index + this.first })),
+          members: {
+            foreground: {
+              /**
+               * The first value of scheme.
+               * @type {number}
+               */
+              get first() {
+                return AnsiColorSupport.COLORS.standard.members.highIntencity.first;
+              },
+              /**
+               * The last value of scheme.
+               * @type {number}
+               */
+              get last() {
+                return AnsiColorSupport.COLORS.standard.members.highIntencity.last;
+              },
+              get colors() {
+                return AnsiColorSupport.COLORS.standard.members.highIntencity.colors;
+              },
+              has(code) {
+                return this.first <= code && code <= this.last;
+              },
+              toAnsiCommand: AnsiColorSupport.extentedCodeForeground,
+            },
+            background: {
+              /**
+               * The first value of scheme.
+               * @type {number}
+               */
+              get first() {
+                return AnsiColorSupport.COLORS.standard.members.highIntencity.first;
+              },
+              /**
+               * The last value of scheme.
+               * @type {number}
+               */
+              get last() {
+                return AnsiColorSupport.COLORS.standard.members.highIntencity.last;
+              },
+              get colors() {
+                return AnsiColorSupport.COLORS.standard.members.highIntencity.colors;
+              },
+              has(code) {
+                return this.first <= code && code <= this.last;
+              },
+
+              toAnsiCommand: AnsiColorSupport.extentedCodeBackground,
+            },
+          },
         },
       },
+      has(code) {
+        return (
+          Number.isSafeInteger(code) && this.first <= code && code <= this.last
+        );
+      },
     },
+
     /**
      * Extended additional colors of 6 groups of 36 colors.
      */
     extended: {
       first: 16,
       last: 231,
-      foreground: {
-        get first() {
-          return this.COLORS.standard.first;
+      members: {
+        foreground: {
+          /**
+           * The first value of scheme.
+           * @type {number}
+           */
+          get first() {
+            return AnsiColorSupport.COLORS.extended.first;
+          },
+          /**
+           * The last value of scheme.
+           * @type {number}
+           */
+          get last() {
+            return AnsiColorSupport.COLORS.extended.last;
+          },
+          /**
+           * The mapping from known color names to the color values.
+           * @type {Record<string, number>}
+           */
+          get colors() {
+            return {};
+          },
+          has(code) {
+            return this.first <= code && code <= this.last;
+          },
+          toAnsiCommand: AnsiColorSupport.extentedCodeForeground,
         },
-        get last() {
-          return this.COLORS.standard.last;
-        },
-        get colors() {
-          return this.COLORS.standard.colors;
-        },
-        toAnsiCommand: AnsiColorSupport.extentedCodeForeground,
-      },
-      background: {
-        get first() {
-          return this.COLORS.standard.first;
-        },
-        get last() {
-          return this.COLORS.standard.last;
-        },
-        get colors() {
-          return this.COLORS.standard.colors;
-        },
+        background: {
+          get first() {
+            return AnsiColorSupport.COLORS.extended.first;
+          },
+          /**
+           * The last value of scheme.
+           * @type {number}
+           */
+          get last() {
+            return AnsiColorSupport.COLORS.extended.last;
+          },
+          /**
+           * The mapping from known color names to the color values.
+           * @type {Record<string, number>}
+           */
+          get colors() {
+            return {};
+          },
+          has(code) {
+            return this.first <= code && code <= this.last;
+          },
 
-        toAnsiCommand: AnsiColorSupport.extentedCodeBackground,
+          toAnsiCommand: AnsiColorSupport.extentedCodeBackground,
+        },
+      },
+      has(code) {
+        return (
+          Number.isSafeInteger(code) && this.first <= code && code <= this.last
+        );
       },
     },
     /**
@@ -443,59 +681,113 @@ export class AnsiColorSupport {
     greyscale: {
       first: 232,
       last: 255,
-      foreground: {
-        get first() {
-          return this.COLORS.standard.first;
+      members: {
+        foreground: {
+          get first() {
+            return AnsiColorSupport.COLORS.greyscale.first;
+          },
+          /**
+           * The last value of scheme.
+           * @type {number}
+           */
+          get last() {
+            return AnsiColorSupport.COLORS.greyscale.last;
+          },
+          /**
+           * The mapping from known color names to the color values.
+           * @type {Record<string, number>}
+           */
+          get colors() {
+            return {};
+          },
+          has(code) {
+            return this.first <= code && code <= this.last;
+          },
+          toAnsiCommand: AnsiColorSupport.extentedCodeForeground,
         },
-        get last() {
-          return this.COLORS.standard.last;
-        },
-        get colors() {
-          return this.COLORS.standard.colors;
-        },
-        toAnsiCommand: AnsiColorSupport.extentedCodeForeground,
-      },
-      background: {
-        get first() {
-          return this.COLORS.standard.first;
-        },
-        get last() {
-          return this.COLORS.standard.last;
-        },
-        get colors() {
-          return this.COLORS.standard.colors;
-        },
+        background: {
+          get first() {
+            return AnsiColorSupport.COLORS.greyscale.first;
+          },
+          /**
+           * The last value of scheme.
+           * @type {number}
+           */
+          get last() {
+            return AnsiColorSupport.COLORS.greyscale.last;
+          },
+          /**
+           * The mapping from known color names to the color values.
+           * @type {Record<string, number>}
+           */
+          get colors() {
+            return {};
+          },
+          has(code) {
+            return this.first <= code && code <= this.last;
+          },
 
-        toAnsiCommand: AnsiColorSupport.extentedCodeBackground,
+          toAnsiCommand: AnsiColorSupport.extentedCodeBackground,
+        },
+      },
+      has(code) {
+        return (
+          Number.isSafeInteger(code) && this.first <= code && code <= this.last
+        );
       },
     },
     rgb: {
       first: 0,
       last: 2 ** 24 - 1,
-      foreground: {
-        get first() {
-          return this.COLORS.standard.first;
+      mambers: {
+        foreground: {
+          get first() {
+            return AnsiColorSupport.COLORS.rgb.first;
+          },
+          /**
+           * The last value of scheme.
+           * @type {number}
+           */
+          get last() {
+            return AnsiColorSupport.COLORS.rgb.last;
+          },
+          /**
+           * The mapping from known color names to the color values.
+           * @type {Record<string, number>}
+           */
+          get colors() {
+            return {};
+          },
+          has(code) {
+            return this.first <= code && code <= this.last;
+          },
+          toAnsiCommand: AnsiColorSupport.rgbForeground,
         },
-        get last() {
-          return this.COLORS.standard.last;
-        },
-        get colors() {
-          return this.COLORS.standard.colors;
-        },
-        toAnsiCommand: AnsiColorSupport.rgbForeground,
-      },
-      background: {
-        get first() {
-          return this.COLORS.standard.first;
-        },
-        get last() {
-          return this.COLORS.standard.last;
-        },
-        get colors() {
-          return this.COLORS.standard.colors;
-        },
+        background: {
+          get first() {
+            return AnsiColorSupport.COLORS.rgb.first;
+          },
+          /**
+           * The last value of scheme.
+           * @type {number}
+           */
+          get last() {
+            return AnsiColorSupport.COLORS.rgb.standard.last;
+          },
+          get colors() {
+            return {};
+          },
+          has(code) {
+            return this.first <= code && code <= this.last;
+          },
 
-        toAnsiCommand: AnsiColorSupport.rgbBackground,
+          toAnsiCommand: AnsiColorSupport.rgbBackground,
+        },
+      },
+      has(code) {
+        return (
+          Number.isSafeInteger(code) && this.first <= code && code <= this.last
+        );
       },
     },
   };
@@ -631,9 +923,13 @@ export class AnsiColorSupport {
       const def = {};
       switch (typeof color) {
         case "string":
-          // Name of color.
-          if (color in AnsiColorSupport.COLORS.foreground) {
-            def.color = AnsiColorSupport.COLORS.foreground[color];
+          // Name of foreground color.
+          if (color in (AnsiColorSupport.COLORS.foreground.colors ?? {})) {
+            def.color = color(AnsiColorSupport.COLORS.foreground.colors[color]);
+          }
+          // Name of background color.
+          if (color in (AnsiColorSupport.COLORS.background.colors ?? {})) {
+            def.color = color(AnsiColorSupport.COLORS.background.colors[color]);
           }
           break;
         case "number":
@@ -646,14 +942,18 @@ export class AnsiColorSupport {
               AnsiColorSupport.COLORS.background,
             ].find((range) => range.first <= color && color <= range.last);
             if (colorScheme) {
-              def.color = colorScheme.apply(color);
+              def.color = colorScheme.toAnsiCommand(color);
             }
           }
           break;
         case "object":
-        // Check which kind of object.
+          // Check which kind of object.
+          if (isRGB(color)) {
+            // RGB foreground.
+            def.color = AnsiColorSupport.rgbForeground(color);
+          }
         default:
-        // Unknown color.
+          // Unknown color.
       }
       return `${def.color ?? ""}${text}${
         def.reset ? AnsiColorSupport.RESET : ""
