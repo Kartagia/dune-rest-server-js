@@ -209,13 +209,15 @@ function getUpdateMessage(id, oldValue, newValue) {
     return `Entry %s updated to %o`;
 }
 
+function validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
+    console.log(`Checking if ${JSON.stringify(newValue)} is valid replacement for ${
+        JSON.stringify(newValue)
+    }`);
+    return newValue.id === undefined || oldValue.id === newValue.id;
+};
+
 const dummyDaoProperties = {
-    validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
-        console.log(`Checking if ${JSON.stringify(newValue)} is valid replacement for ${
-            JSON.stringify(newValue)
-        }`);
-        return newValue.id === undefined || oldValue.id === newValue.id;
-    },
+    
     all: () => (Promise.resolve([...people.entries()])),
     one: (id) => {
         return new Promise( (resolve, reject) => {
@@ -226,12 +228,12 @@ const dummyDaoProperties = {
             }
         });
     },
-    update: (id, value) => {
+    update(id, value) {
         return new Promise((resolve, reject) => {
             try {
                 const newValue = new People(value);
                 const entry = people.get(id);
-                if (entry && this.validReplacement(entry, newValue)) {
+                if (entry && validReplacement(entry, newValue)) {
                     if (!newValue.id) {
                         newValue.id = entry.id;
                     }
@@ -244,6 +246,7 @@ const dummyDaoProperties = {
             } catch (err) {
                 // Update failed.
                 /** @todo Add error logging */
+                console.log(`Update of ${id} failed due ${err}`);
                 log.debug(log.formatMessage(`Update %s failed due error %o`, [id, err]));
                 resolve(false);
             }
