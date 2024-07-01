@@ -179,6 +179,13 @@ export class PeopleDao extends BasicDao {
  */
 let people = new Map();
 
+/**
+ * Check the validity of the new value.
+ * @param {People} oldValue The old value.
+ * @param {People} newValue The new value.
+ * @returns {boolean} True, if and only if the new value is suitable
+ * replacement for the stored old value.
+ */
 function validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
     console.log(`Checking if ${JSON.stringify(newValue)} is valid replacement for ${
         JSON.stringify(newValue)
@@ -186,6 +193,10 @@ function validReplacement( /** @type {People} */ oldValue, /** @type {People} */
     return newValue.id === undefined || oldValue.id === newValue.id;
 };
 
+/**
+ * The dummy dao properites. 
+ * @type {import("./BasicDao.mjs").Dao<string, People>}
+ */
 const dummyDaoProperties = {
     validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
         return newValue.id === undefined || oldValue.id === newValue.id;
