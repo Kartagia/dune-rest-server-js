@@ -74,3 +74,64 @@ Content-Type: application/json
     }
   }
 }
+
+###
+// @name Invalid update
+PUT http://localhost:3000/people/Sirius
+Content-Type: application/json
+
+{
+ "name": "Sirius",
+  "id": "Sirius",
+  "type": "Major",
+  "skills": {
+    "Battle": {
+      "name": "Battle",
+      "id": "Battle",
+      "minValue": 4,
+      "maxValue": 8,
+      "current": 3
+    },
+    "Communicate": {
+      "name": "Communicate",
+      "id": "Communicate",
+      "minValue": 4,
+      "maxValue": 8,
+      "current": 4
+    },
+    "Duty": {
+      "name": "Duty",
+      "id": "Duty",
+      "minValue": 4,
+      "maxValue": 8,
+      "current": 4
+    },
+    "Move": {
+      "name": "Move",
+      "id": "Move",
+      "minValue": 4,
+      "maxValue": 8,
+      "current": 6
+    },
+    "Understand": {
+      "name": "Understand",
+      "id": "Understand",
+      "minValue": 4,
+      "maxValue": 8,
+      "current": 4
+    }
+  }
+}
+
+###
+// @name PatchSirius
+PATCH http://localhost:3000/people/Sirius
+Content-Type: application/json
+
+{
+  "skills": {
+    "Battle": {
+      "current": 5
+    }
+  }
+}
