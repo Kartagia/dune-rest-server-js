@@ -94,6 +94,11 @@ export class People {
         }, {});
     }
 
+    /**
+     * Get default idetnifier for people properties.
+     * @param {PeopleProps} props The people properties.
+     * @returns {string} The default identifier for the given properties.
+     */
     defaultId(props) {
         if (props && props.name) {
             return props.name;
