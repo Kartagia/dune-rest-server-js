@@ -179,6 +179,13 @@ export class PeopleDao extends BasicDao {
  */
 let people = new Map();
 
+function validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
+    console.log(`Checking if ${JSON.stringify(newValue)} is valid replacement for ${
+        JSON.stringify(newValue)
+    }`);
+    return newValue.id === undefined || oldValue.id === newValue.id;
+};
+
 const dummyDaoProperties = {
     validReplacement( /** @type {People} */ oldValue, /** @type {People} */ newValue) {
         return newValue.id === undefined || oldValue.id === newValue.id;
@@ -198,7 +205,7 @@ const dummyDaoProperties = {
             try {
                 const newValue = new People(value);
                 const entry = people.get(id);
-                if (entry && this.validReplacement(entry, newValue)) {
+                if (entry && validReplacement(entry, newValue)) {
                     if (!newValue.id) {
                         newValue.id = entry.id;
                     }
