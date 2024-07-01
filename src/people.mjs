@@ -176,6 +176,7 @@ export class PeopleDao extends BasicDao {
 
 /**
  * The storage of the people.
+ * @type {Map<string, People>}
  */
 let people = new Map();
 
