@@ -18,6 +18,18 @@ module.exports = [
     }
 },
 {
+    entry: {skill: "./src/skill.mjs"},
+    output: {
+        path: path.resolve(__dirname, "lib"),
+        filename: '[name].js',
+        globalObject: 'this',
+        library:  {
+            name: '[name]',
+            type: 'umd'
+        }
+    }
+},
+{
     entry: {dao: "./src/BasicDao.mjs"},
     output: {
         path: path.resolve(__dirname, "lib"),
