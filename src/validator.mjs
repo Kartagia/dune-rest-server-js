@@ -397,7 +397,7 @@ export function checkObject(
         if (checker) {
           // Some of these checks throws error.
           try {
-            checker(source[prop]);
+            return checker(source[prop]);
           } catch (err) {
             throw new Error(`Invalid property ${prop}`, { cause: err });
           }
