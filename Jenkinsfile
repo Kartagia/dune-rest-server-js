@@ -11,5 +11,13 @@ pipeline {
                 echo 'Hello again'
             }
         }
+    stage("Handle fix") {
+        when {
+            branch 'fix-*'
+        }
+        steps {
+            cat 'README.md'
+        }
+    }
     }
 }
