@@ -22,18 +22,27 @@
  */
 
 /**
- * Is the given value valid RGB valie.
+ * 
+ * @param {*} value The tested valeu.
+ * @returns {boolean} True, if and only if the value is valid
+ * RGB component value.
+ */
+export function isValidRGBComponentValue(value) {
+  return Number.isSafeInteger(value) && value >= 0 && value <= 255;
+}
+
+/**
+ * Is the given value valid RGB value.
  * @param {*} value The tested value.
  * @returns {boolean} True, if and only if the value is RGB.
  */
 export function isRGB(value) {
   function validRgbValue(value) {
-    return Number.isSafeInteger(value) && value >= 0 && value <= 255;
+    isValidRGBComponentValue(value);
   }
   switch (typeof value) {
     case "string":
-      /** TODO rgb support */
-      return false;
+      return /^\#(?:[0-9a-fA-F]{2}){3,4}$/.test(value);
     case "number":
       return Number.isSafeInteger(value) && value >= 0 && value < 2 ** 24;
     case "object":
@@ -75,6 +84,8 @@ export function checkRGB(value) {
   }
 }
 
+
+
 /**
  * The RGB value as an array of color values.
  * @typedef {[red: number, green: number, blue: number, alpha: number]} RGBAArray
@@ -95,6 +106,58 @@ export function checkRGB(value) {
  */
 
 /**
+ * Is the given value valid RGBA value.
+ * @param {*} value The tested value.
+ * @returns {boolean} True, if and only if the value is RGB.
+ */
+export function isRGBA(value) {
+  switch (typeof value) {
+    case "string":
+      return /^\#(?:[0-9a-fA-F]{2}){4}$/.test(value);
+    case "number":
+      return Number.isSafeInteger(value) && value >= 0 && value < 2 ** 32;
+    case "object":
+      if (value instanceof Array) {
+        return value.length >= 4 && value.slice(0, 4).every(validRgbValue);
+      } else {
+        return ["red", "green", "blue", "alpha"].every(
+          (prop) => prop in value && validRgbValue(value[prop])
+        );
+      }
+    default:
+      return false;
+  }
+}
+
+
+/**
+ * Check if a value is a RGBA value. A value is a valid RGBA value, if it is either
+ * integer representing a 32 bit RGB value, a string containing RGBA value in format
+ * #<rr><gg><bb><aa>, or a valid REBA array, or a valid RGBA object.
+ * @param {*} value The checked value.
+ * @returns {RGBA} THe valid RGB value derrived from the value.
+ * @throws {TYpeError} The parameter was not a vlaid RGB value.
+ */
+export function checkRGBA(value) {
+  if (!isRGBA(value)) {
+    throw new TypeError("Value is not a RGBA value");
+  } else if (typeof value === "string") {
+    return [
+      Number.parseInt(value.substring(1, 2), 16),
+      Number.parseInt(value.substring(3, 4), 16),
+      Number.parseInt(value.substring(5, 6), 16),
+      Number.parseInt(value.substring(7, 8), 16),
+    ];
+  } else if (typeof value === "number") {
+    return [(number >> 24) & 0xff, (number >> 16) & 0xff, (number >> 8) & 0xff, (number >> 0) & 0xff];
+  } else {
+    return value;
+  }
+}
+
+
+/**
+ * The format opötions.
  * @typedef {Object} FormatOptions
  * @property {number} [minLength] THe minimum length of the format.
  * @property {number} [maxLength] The maximum lenght of the format.
@@ -123,7 +186,7 @@ export function toHex(value, options = {}) {
       return result;
     }
   } else {
-    throw new RangeError("Only positive integers cna be converted to hex");
+    throw new RangeError("Only positive integers can be converted to hex");
   }
 }
 
@@ -138,7 +201,7 @@ export function toHex(value, options = {}) {
  * The default parse hex otions.
  * @type {Required<ParseHexOptions>}
  */
-const defualtParseHexOptions = { bytes: 2, message: "Invalid value" };
+const defaultParseHexOptions = { bytes: 2, message: "Invalid value" };
 
 /**
  * Parse a hex value.
@@ -148,7 +211,7 @@ const defualtParseHexOptions = { bytes: 2, message: "Invalid value" };
  * @throws {TypeError} THe valeu was not a valid string representaiton of a hex.
  */
 function parseHex(value, options = {}) {
-  const { bytes, message } = { ...defualtParseHexOptions, ...options };
+  const { bytes, message } = { ...defaultParseHexOptions, ...options };
   const regex = new RegExp(
     "^(?:0x|#)?" + `([a-f0-9]{${2 * bytes}})` + "$",
     "i"
@@ -163,16 +226,20 @@ function parseHex(value, options = {}) {
  * Check hex word.
  * @param {any} value The hex word as string or as a number.
  * @param {ParseHexOptions} [options] The parse options.
- * @returns {number} The word value as an integer number.
+ * @returns {number|bigint} The word value as an integer number.
  * @throws {TypeError} The value was ivnalid.
  */
 function checkHexWord(value, options = {}) {
-  const { bytes, message } = { ...defualtParseHexOptions, ...options };
+  const { bytes, message } = { ...defaultParseHexOptions, ...options };
   switch (typeof value) {
     case "string":
       return parseHex(value, options);
     case "number":
-      if (Number.isSafeInteger(value) && value >= 0 && value < 2 ** bytes) {
+      if (Number.isSafeInteger(value) && value >= 0 && value < 2 ** (3 * bytes)) {
+        return value;
+      }
+    case "bigint":
+      if (value >= 0 && value < 2n ** BigInt(bytes)) {
         return value;
       }
     default:
@@ -189,12 +256,15 @@ function checkHexWord(value, options = {}) {
  */
 export function rgb(red, green, blue) {
   return {
-    red: checkHexWord(red, { bytes: 2, message: "Invalid red color value" }),
-    gree: checkHexWord(green, {
-      bytes: 2,
+    red: checkHexWord(red, { bytes: 1, message: "Invalid red color value" }),
+    green: checkHexWord(green, {
+      bytes: 1,
       message: "Invalid green color value",
     }),
-    blue: checkHexWord(blue, { bytes: 2, message: "Invalid blue color value" }),
+    blue: checkHexWord(blue, { bytes: 1, message: "Invalid blue color value" }),
+    valueOf() {
+      return (this.red << 16) + (this.green << 8) + this.blue;
+    },
     toString() {
       return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
     },
@@ -206,18 +276,24 @@ export function rgb(red, green, blue) {
  * @param {number|hex} red THe red color value.
  * @param {number|hex} green The green color value.
  * @param {number|hex} blue The blue color value.
- * @param {number|hex} alpha The alpha channel value.
- * @returns {RGBObject} The RGB object.
+ * @param {number|hex} [alpha=255] The alpha channel value. This value
+ * is optional in order to create valid TGBA from a RGB value using default
+ * alpha channel of full opaqueness.
+ * @returns {RGBAObject} The RGBA object.
  */
 export function rgba(red, green, blue, alpha = 255) {
+  const rgbVal = rgb(red, green, blue);
   return {
-    ...rgb(red, green, blue),
+    ...rgbVal,
     alpha: checkHexWord(alpha, {
       bytes: 2,
       message: "Invalid alpha channel value",
     }),
+    valueOf() {
+      return rgb(this.red, this.green, this.blue).valueOf() << 8 + this.alpha;
+    },
     toString() {
-      return `#${toHex(red)}${toHex(green)}${toHex(blue)}${toHex(alpha)}`;
+      return rgb(this.red, this.green, this.blue).toString() + toHex(this.alpha);
     },
   };
 }
@@ -234,7 +310,7 @@ export class ColorDef {
    * @param {RGB} [background] The background color. Defaults to the current
    * color.
    */
-  static fromRGB(foreground = undefined, bacground = undefined) {
+  static fromRGB(foreground = undefined, background = undefined) {
     return new ColorDef().rgbForeground(foreground).rgbBackground(background);
   }
 
@@ -246,8 +322,19 @@ export class ColorDef {
     this.background = "";
   }
 
+  /**
+   * The ansi color declaration of the color.
+   * @return {string} The ANSI color declaration for the color definition.
+   */
   get color() {
     return `${this.foreground}${this.background}`;
+  }
+
+  /**
+   * @inheritdoc
+   */
+  toString() {
+    return this.color;
   }
 
   /**
@@ -257,13 +344,16 @@ export class ColorDef {
    */
   rgbForeground(rgbForeground) {
     if (rgbForeground !== undefined) {
-      const rgb = checkRGB(rgbForeground);
-      const [red, green, blue] = Array.isArray(rgb)
-        ? rgb
-        : [rgb.red, rgb.green, rgb.blue];
-      this.foreground = AnsiColorSupport.rgbForeground(red, green, blue);
-    } else {
-      this.foreground = "";
+      if (rgbForeground === null) {
+        // Unsetting the foreground.
+        this.foreground = "";
+      } else {
+        const rgb = checkRGB(rgbForeground);
+        const [red, green, blue] = Array.isArray(rgb)
+          ? rgb
+          : [rgb.red, rgb.green, rgb.blue];
+        this.foreground = AnsiColorSupport.rgbForeground(red, green, blue);
+      }
     }
     return this;
   }
@@ -275,31 +365,36 @@ export class ColorDef {
    */
   rgbBackground(rgbBackground) {
     if (rgbBackground !== undefined) {
-      const rgb = checkRGB(rgbBackground);
-      const [red, green, blue] = Array.isArray(rgb)
-        ? rgb
-        : [rgb.red, rgb.green, rgb.blue];
-      this.background = AnsiColorSupport.rgbBackground(red, green, blue);
-    } else {
-      this.backround = "";
+      if (rgbBackground === null) {
+        // Unsetting the background.
+        this.background = "";
+      } else {
+        // Setting background to the given RGB value.
+        const rgb = checkRGB(rgbBackground);
+        const [red, green, blue] = Array.isArray(rgb)
+          ? rgb
+          : [rgb.red, rgb.green, rgb.blue];
+        this.background = AnsiColorSupport.rgbBackground(red, green, blue);
+      }
     }
     return this;
   }
 
   /**
-   * Set colro by the code.
+   * Set color by the code.
    * @param {number} code The ANSI color code.
    */
   colorCode(code) {
     const scheme = [
       AnsiColorSupport.COLORS.foreground,
       AnsiColorSupport.COLORS.background,
-    ].find((scheme) => scheme.first <= color && color <= scheme.last);
+    ].find((scheme) => scheme.has(code));
     if (scheme === AnsiColorSupport.COLORS.foreground) {
       this.foreground = scheme.toAnsiCommand(code);
     } else if (scheme === AnsiColorSupport.COLORS.background) {
       this.background = scheme.toAnsiCommand(code);
-    } else {
+    } else if (code === 0) {
+      // The code is the reset code.
       this.foreground = "";
       this.background = "";
     }
@@ -315,13 +410,85 @@ export class ColorDef {
 /**
  * A color scheme.
  * @typedef {Object} ColorScheme
- * @property {number} first The first valid value.
- * @property {number} last The last valid value.
+ * @property {number} [first] The first valid value.
+ * @property {number} [last] The last valid value.
  * @property {(number)=>boolean} has Does the scheme contain color value.
  * @property {(number)=>string} toAnsiCommand Get ANSI command starting the color.
- * @property {Record<string, number>} [colors] The mapping from color names to the color codes.
+ * @property {Record<string, number|RGB|RGBA>} [colors] The mapping from color names to the color codes.
  * @property {Record<string, ColorScheme>} [members] The sub scheme of the current scheme.
  */
+
+/**
+ * The list of color names.
+ * @typedef {Array<string|null>} ColorNameList
+ */
+
+/**
+ * The color name list source.
+ * @typedef {ColorNameList & Required<Pick<ColorScheme, "toAnsiCommand"|"first">> & Partial<Omit<ColorScheme, "toAnsiCommand"|"first"|"colors">>} ColorNameSource
+ */
+
+/**
+ * The color scheme source.
+ * @typedef {Required<Pick<ColorScheme, "toAnsiCommand">> & Partial<Omit<ColorScheme, "toAnsiCommand">>} ColorSchemeSource
+ */
+
+/**
+ * Create a color scheme.
+ * @param {ColorNameSource|ColorSchemeSource} source The color scheme options.
+ * @returns {ColorScheme} The created color scheme.
+ * @throws {SyntaxError} The given source was invalid.
+ */
+export function createColorScheme(source = {}) {
+  const { toAnsiCommand, has = undefined, first = undefined, colors = undefined, members = undefined } = source;
+  var { last = undefined } = source;
+  let colorRecord; 
+  if (Array.isArray(colors)) {
+    if (!Number.isSafeInteger(first)) {
+      throw new SyntaxError("Invalid or missing first property");
+    } else {
+      last = first;
+      colorRecord = colors.reduce(
+        (result, colorName, index) => {
+          if (colorName == null) {
+            last = undefined;
+          } else {
+            result[colorName] = first + index;
+            if (last !== undefined) {
+              last = result[colorName];
+            }
+          }
+          return result;
+        }, {}
+      )
+    }
+  } else {
+    colorRecord = colors;
+  }
+
+  return {
+    first: last == null ? undefined : first,
+    last,
+    colors: colorRecord,
+    members,
+    has(code) {
+      if (has) {
+        return has(code);
+      } else {
+        return (this.first === undefined || this.first <= code) &&
+          (this.last === undefined || code <= this.last) ||
+          (this.members != null && this.members.some(member => member.has(code)));
+      }
+    },
+    toAnsiCommand(code) {
+      if (this.has(code)) {
+        return toAnsiCommand(code);
+      } else {
+        throw new SyntaxError("Invalid color code");
+      }
+    }
+  };
+}
 
 /**
  * Class creating ANSI color support for loggers.
@@ -335,7 +502,7 @@ export class AnsiColorSupport {
   /**
    * Color reset.
    */
-  static RESET = `${this.ESCAPE}0m`;
+  static RESET = `${AnsiColorSupport.ESCAPE}0m`;
 
   /**
    * Get the escape starting a foreground color.
@@ -344,10 +511,10 @@ export class AnsiColorSupport {
    */
   static foreground(code) {
     if (
-      code >= this.COLORS.foreground.first &&
-      code <= this.COLORS.foreground.last
+      code >= AnsiColorSupport.COLORS.foreground.first &&
+      code <= AnsiColorSupport.COLORS.foreground.last
     ) {
-      return `${this.COLOR_COMMAND_START}${code}${this.COLOR_COMMAND_END}`;
+      return `${AnsiColorSupport.COLOR_COMMAND_START}${code}${AnsiColorSupport.COLOR_COMMAND_END}`;
     } else {
       return "";
     }
@@ -360,10 +527,10 @@ export class AnsiColorSupport {
    */
   static background(code) {
     if (
-      code >= this.COLORS.background.first &&
-      code <= this.COLORS.background.last
+      code >= AnsiColorSupport.COLORS.background.first &&
+      code <= AnsiColorSupport.COLORS.background.last
     ) {
-      return `${this.COLOR_COMMAND_START}${code}${this.COLOR_COMMAND_END}`;
+      return `${AnsiColorSupport.COLOR_COMMAND_START}${code}${AnsiColorSupport.COLOR_COMMAND_END}`;
     } else {
       return "";
     }
@@ -374,79 +541,47 @@ export class AnsiColorSupport {
    * @type {Record<string, ColorScheme>}
    */
   static COLORS = {
-    foreground: {
-      /**
-       * The first value of scheme.
-       * @type {number}
-       */
-      first: 30,
-      /**
-       * The last value of scheme.
-       * @type {number}
-       */
-      last: 37,
-      /**
-       * The mapping from known color names to the color values.
-       * @type {Record<string, number>}
-       */
-      colors: {
-        default: 39,
-        ...[
-          "black",
-          "red",
-          "green",
-          "yellow",
-          "blue",
-          "magenta",
-          "cyan",
-          "white",
-        ].map((name, index) => ({ name: index + this.first })),
-      },
-      has(code) {
-        return (
-          code === this.colors.default ||
-          (this.first <= code && code <= this.last)
-        );
-      },
-      toAnsiCommand: AnsiColorSupport.foreground,
-    },
-    background: {
-      /**
-       * The first value of scheme.
-       * @type {number}
-       */
-      first: 40,
-      /**
-       * The last value of scheme.
-       * @type {number}
-       */
-      last: 47,
-      /**
-       * The mapping from known color names to the color values.
-       * @type {Record<string, number>}
-       */
-      colors: {
-        default: 49,
-        ...[
-          "black",
-          "red",
-          "green",
-          "yellow",
-          "blue",
-          "magenta",
-          "cyan",
-          "white",
-        ].map((name, index) => ({ name: index + this.first })),
-      },
-      has(code) {
-        return (
-          code === this.colors.default ||
-          (this.first <= code && code <= this.last)
-        );
-      },
-      toAnsiCommand: AnsiColorSupport.background,
-    },
-    standard: {
+    foreground: createColorScheme({
+      colors: [
+        "black",
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "magenta",
+        "cyan",
+        "white",
+        null,
+        "default"
+      ].reduce((result, color, index) => {
+        if (color != null) {
+          result[color] = index + 30
+        }
+        return result;
+      }, {}),
+      toAnsiCommand: AnsiColorSupport.foreground
+    }),
+    background: createColorScheme({
+      colors: [
+        "black",
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "magenta",
+        "cyan",
+        "white",
+        null,
+        "default"
+      ].reduce((result, color, index) => {
+        if (color != null) {
+          result[color] = 40 + index;
+        }
+        return result;
+      }, {}),
+      toAnsiCommand: AnsiColorSupport.background
+    }),
+    standard: createColorScheme({
       /**
        * The first value of scheme.
        * @type {number}
@@ -458,34 +593,20 @@ export class AnsiColorSupport {
        */
       last: 15,
       members: {
-        standard: {
-          /**
-           * The first value of scheme.
-           * @type {number}
-           */
+        standard: createColorScheme({
           first: 0,
-          /**
-           * The last value of scheme.
-           * @type {number}
-           */
           last: 7,
-          /**
-           * The mapping from known color names to the color values.
-           * @type {Record<string, number>}
-           */
-          colors: {
-            ...[
-              "black",
-              "red",
-              "green",
-              "yellow",
-              "blue",
-              "magenta",
-              "cyan",
-              "white",
-            ].map((name, index) => ({ name: index + this.first })),
-          },
-          members:{
+          colors: [
+            "black",
+            "red",
+            "green",
+            "yellow",
+            "blue",
+            "magenta",
+            "cyan",
+            "white",
+          ],
+          members: {
             foreground: {
               get first() {
                 return AnsiColorSupport.COLORS.standard.members.standard.first;
@@ -528,10 +649,13 @@ export class AnsiColorSupport {
 
               toAnsiCommand: AnsiColorSupport.extentedCodeBackground,
             },
+            get default() {
+              return this.foreground;
+            }
           },
-        },
+        }),
 
-        highIntencity: {
+        highIntencity: createColorScheme({
           /**
            * The first value of scheme.
            * @type {number}
@@ -551,7 +675,7 @@ export class AnsiColorSupport {
             "magenta",
             "cyan",
             "white",
-          ].map((name, index) => ({ name: index + this.first })),
+          ],
           members: {
             foreground: {
               /**
@@ -600,15 +724,13 @@ export class AnsiColorSupport {
 
               toAnsiCommand: AnsiColorSupport.extentedCodeBackground,
             },
-          },
-        },
+            get default() {
+              return this.foreground;
+            }
+          }
+        })
       },
-      has(code) {
-        return (
-          Number.isSafeInteger(code) && this.first <= code && code <= this.last
-        );
-      },
-    },
+    }),
 
     /**
      * Extended additional colors of 6 groups of 36 colors.
@@ -739,7 +861,7 @@ export class AnsiColorSupport {
     rgb: {
       first: 0,
       last: 2 ** 24 - 1,
-      mambers: {
+      members: {
         foreground: {
           get first() {
             return AnsiColorSupport.COLORS.rgb.first;
@@ -772,7 +894,7 @@ export class AnsiColorSupport {
            * @type {number}
            */
           get last() {
-            return AnsiColorSupport.COLORS.rgb.standard.last;
+            return AnsiColorSupport.COLORS.rgb.last;
           },
           get colors() {
             return {};
@@ -809,7 +931,7 @@ export class AnsiColorSupport {
    * @returns {string} The color defining escape sequence.
    */
   static extentedCodeForeground(code) {
-    return `${this.ESCAPE}${this.COLOR_COMMAND_START}${this.EXTENDED_FOREGROUND_COLOR};${code}${this.COLOR_COMMAND_END}`;
+    return `${AnsiColorSupport.ESCAPE}${AnsiColorSupport.COLOR_COMMAND_START}${AnsiColorSupport.EXTENDED_FOREGROUND_COLOR};${code}${AnsiColorSupport.COLOR_COMMAND_END}`;
   }
 
   /**
@@ -818,7 +940,7 @@ export class AnsiColorSupport {
    * @returns {string} The color defining escape sequence.
    */
   static extentedCodeBackground(code) {
-    return `${this.ESCAPE}${this.COLOR_COMMAND_START}${this.EXTENDED_BACKGROUND_COLOR};${code}${this.COLOR_COMMAND_END}`;
+    return `${AnsiColorSupport.ESCAPE}${AnsiColorSupport.COLOR_COMMAND_START}${AnsiColorSupport.EXTENDED_BACKGROUND_COLOR};${code}${AnsiColorSupport.COLOR_COMMAND_END}`;
   }
 
   /**
@@ -829,11 +951,11 @@ export class AnsiColorSupport {
    * @returns {string} The ANSI foreground color start.
    */
   static rgbForeground(red, green, blue) {
-    return `${this.ESCAPE}[${this.RGB_FOREGROUND_COLOR}${rgbColor(
+    return `${AnsiColorSupport.ESCAPE}[${AnsiColorSupport.RGB_FOREGROUND_COLOR}${rgbColor(
       red,
       green,
       blue
-    )}${this.COLOR_COMMAND_END}`;
+    )}${AnsiColorSupport.COLOR_COMMAND_END}`;
   }
 
   /**
@@ -844,11 +966,11 @@ export class AnsiColorSupport {
    * @returns {string} The ANSI background color start.
    */
   static rgbBackground(red, green, blue) {
-    return `${this.ESCAPE}[${this.RGB_BACKGROUND_COLOR}${rgbColor(
+    return `${AnsiColorSupport.ESCAPE}[${AnsiColorSupport.RGB_BACKGROUND_COLOR}${rgbColor(
       red,
       green,
       blue
-    )}${this.COLOR_COMMAND_END}`;
+    )}${AnsiColorSupport.COLOR_COMMAND_END}`;
   }
 
   /**
@@ -871,11 +993,47 @@ export class AnsiColorSupport {
    */
   static EXTENDED_BACKGROUND_COLOR = "48;5";
 
+  /**
+   * RGB foreground color command.
+   */
   static RGB_FOREGRUND_COMMAND = "38;2";
 
+  /**
+   * RGB background color command.
+   */
   static RGB_BACKGRUND_COMMAND = "48;2";
 
-  constructor() {}
+  /**
+   * Create a new ANSI color support.
+   */
+  constructor() { }
+
+  isValidColor(colorSpaceDef, color) {
+    switch (typeof color) {
+      case "number":
+        // Color code.
+        if (colorSpaceDef.first !== undefined && colorSpaceDef.last !== undefined) {
+          // Color space is continuous range.
+          return (colorSpaceDef.first <= color && color <= colorSpaceDef.last);
+        } else if (colorSpaceDef.members) {
+          // The colro has members - testing them.
+          return colorSpaceDef.members.some(subDef => this.isValidColor(subDef, color));
+        } else {
+          return false;
+        }
+      case "string":
+        // Color name.
+        if (colorSpaceDef.colors) {
+          return colorSpaceDef.colors.some(color => (color === color));
+        } else if (colorSpaceDef.members) {
+          return colorSpaceDef.members.some(subDef => this.isValidColor(subDef, color));
+        } else {
+          return false;
+        }
+      case "object":
+
+    }
+  }
 
   /**
    * Get text with foregorund color.
@@ -887,6 +1045,12 @@ export class AnsiColorSupport {
     const def = {};
     switch (typeof color) {
       case "number":
+        // Color code.
+        if (this.isValidColor(AnsiColorSupport.COLORS.foreground, color)) {
+          return
+        } else {
+          throw new SyntaxError("Invalid foreground color code");
+        }
       case "string":
       case "object":
 
@@ -916,9 +1080,8 @@ export class AnsiColorSupport {
   color(color, text) {
     if (color instanceof ColorDef) {
       const def = color;
-      return `${def.color ?? ""}${text}${
-        def.reset ? AnsiColorSupport.RESET : ""
-      }`;
+      return `${def.color ?? ""}${text}${def.reset ? AnsiColorSupport.RESET : ""
+        }`;
     } else {
       const def = {};
       switch (typeof color) {
@@ -953,11 +1116,10 @@ export class AnsiColorSupport {
             def.color = AnsiColorSupport.rgbForeground(color);
           }
         default:
-          // Unknown color.
+        // Unknown color.
       }
-      return `${def.color ?? ""}${text}${
-        def.reset ? AnsiColorSupport.RESET : ""
-      }`;
+      return `${def.color ?? ""}${text}${def.reset ? AnsiColorSupport.RESET : ""
+        }`;
     }
   }
 }
