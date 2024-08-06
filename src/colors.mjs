@@ -235,7 +235,7 @@ function checkHexWord(value, options = {}) {
     case "string":
       return parseHex(value, options);
     case "number":
-      if (Number.isSafeInteger(value) && value >= 0 && value < 2 ** (3 * bytes)) {
+      if (Number.isSafeInteger(value) && value >= 0 && value < 2 ** (8 * bytes)) {
         return value;
       }
     case "bigint":
