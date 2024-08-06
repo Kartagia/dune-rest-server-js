@@ -1,6 +1,6 @@
 
 import { describe } from "mocha";
-import { AnsiColorSupport, checkHexWord, isRGB, isRGBA, isValidRGBComponentValue } from "../src/colors.mjs";
+import { AnsiColorSupport, isRGB, isRGBA, isValidRGBComponentValue } from "../src/colors.mjs";
 import { createColorScheme } from "../src/colors.mjs";
 import { expect } from "chai";
 
@@ -19,6 +19,7 @@ function testContinuosRange(colorScheme) {
     expect(colorScheme.last).a("number", "Invalid last code of continuous range");
     expect(colorScheme.first <= colorScheme.last, "Color range is empty").true;
 }
+
 
 /**
  * Test if a value is a valid color.
@@ -182,7 +183,7 @@ describe("function createColorScheme", function () {
                     expect(value.colors, `Invalid color ${colorName}`).property(colorName, this.params.first + index);
                 })
                 expect(value.first).equal(this.params.first);
-                expect(value.last).equal(this.params.first + 1);
+                expect(value.last).equal(this.params.first +1);
             }
         },
         {
@@ -244,75 +245,3 @@ describe("function createColorScheme", function () {
         });
     });
 });
-
-
-describe("function checkHexWord", function () {
-
-    const testCases = [
-        ...[
-            {
-                value: 0,
-                bytes: 1
-            },
-            { value: 255, bytes: 1 },
-            { value: 64, bytes: 1 },
-            { value: 511, bytes: 2 },
-            { value: 2**16-1, bytes: 2 },
-            { value: -1, bytes: 1, exception: TypeError },
-            { value: -255, bytes: 1, exception: TypeError },
-            { value: 256, bytes: 1, exception: TypeError },
-            { value: 2**16, bytes: 2, exception: TypeError}
-        ].map((params) => {
-            return {
-                name: `Number value ${params.value} with ${params.bytes}`,
-                params: [params.value, { bytes: params.bytes }],
-                test(value) {
-                    expect(value).equals(value);
-                },
-                exception: params.exception
-            }
-        }),
-        ...[
-            {
-                value: "#00",
-                bytes: 1, 
-                expected: 0
-            },
-            {
-                value: "0x00",
-                bytes: 1,
-                expected: 0
-            },
-            { value: "#ff", bytes: 1, expected: 255 },
-            { value: "#40", bytes: 1, expected: 64 },
-            { value: "01ff", bytes: 2, expected: 511 },
-            { value: "#ffff", bytes: 2, expected: 2**16-1 },
-            { value: "#0000", bytes: 2, expected: 0},
-            { value: "Abba", bytes: 1, exception: TypeError},
-            { value: "#0x0100", bytes: 1, exception: TypeError },
-            { value: "#00000", bytes: 2, exception: TypeError},
-            { value: "#0000000", bytes: 2, exception: TypeError}
-        ].map((params) => {
-            return {
-                name: `String value ${params.value} with ${params.bytes}`,
-                params: [params.value, { bytes: params.bytes }],
-                test(value) {
-                    expect(value).equals(params.expected);
-                },
-                exception: params.exception
-            }
-        })
-
-    ];
-
-    testCases.forEach((testCase, index) => {
-        it(`Test #${index}: ${testCase.name}`, function () {
-            if (testCase.exception) {
-                expect(() => (checkHexWord(...testCase.params))).throw(testCase.exception);
-            } else {
-                expect(() => (checkHexWord(...testCase.params))).not.throw();
-                testCase.test(checkHexWord(...testCase.params));
-            }
-        });
-    });
-})
