@@ -229,7 +229,7 @@ function parseHex(value, options = {}) {
  * @returns {number|bigint} The word value as an integer number.
  * @throws {TypeError} The value was ivnalid.
  */
-function checkHexWord(value, options = {}) {
+export function checkHexWord(value, options = {}) {
   const { bytes, message } = { ...defaultParseHexOptions, ...options };
   switch (typeof value) {
     case "string":
