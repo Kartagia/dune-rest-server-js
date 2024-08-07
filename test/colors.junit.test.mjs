@@ -245,3 +245,7 @@ describe("function createColorScheme", function () {
         });
     });
 });
+
+describe("color", function() {
+
+});
