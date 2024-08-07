@@ -1012,26 +1012,19 @@ export class AnsiColorSupport {
     switch (typeof color) {
       case "number":
         // Color code.
-        if (colorSpaceDef.first !== undefined && colorSpaceDef.last !== undefined) {
-          // Color space is continuous range.
-          return (colorSpaceDef.first <= color && color <= colorSpaceDef.last);
-        } else if (colorSpaceDef.members) {
-          // The colro has members - testing them.
-          return colorSpaceDef.members.some(subDef => this.isValidColor(subDef, color));
-        } else {
-          return false;
-        }
+        return colorSpaceDef.has(color);
       case "string":
         // Color name.
-        if (colorSpaceDef.colors) {
-          return colorSpaceDef.colors.some(color => (color === color));
+        if (colorSpaceDef.colors && color in colorSpaceDef.colors) {
+          return true;
         } else if (colorSpaceDef.members) {
           return colorSpaceDef.members.some(subDef => this.isValidColor(subDef, color));
         } else {
           return false;
         }
       case "object":
-
+        // Color spaces does not support RGB or RGBA values.
+        return false;
     }
   }
 
@@ -1042,16 +1035,22 @@ export class AnsiColorSupport {
    * @returns {string} The text with ANSI color codes.
    */
   foregroundColor(color, text) {
-    const def = {};
+    const def = AnsiColorSupport.COLORS.foreground;
     switch (typeof color) {
       case "number":
         // Color code.
-        if (this.isValidColor(AnsiColorSupport.COLORS.foreground, color)) {
-          return
+        if (this.isValidColor(def, color)) {
+          const colors = def;
+          return `${colors.toAnsiCommand(color)}${text}${colors.toAnsiCommand(color.colors.default)}`;
         } else {
           throw new SyntaxError("Invalid foreground color code");
         }
       case "string":
+        if (def.colors) {
+          if (def.colors[color]) {
+            return `${def.toAnsiCommand(color.colors[color])}${text}${def.toAnsiCommand(def.colors.default)}`;
+          }
+        }
       case "object":
 
       default:
